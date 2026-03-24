@@ -1,9 +1,10 @@
 'use client'
 
-import { Pencil, Trash2, Lock, ChevronRight, Link } from 'lucide-react'
+import { Pencil, Trash2, Lock, ChevronRight, Link, Target } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import type { QuestNode, QuestStatus } from '@/types'
+import { useGoalStore } from '@/store/useGoalStore'
 
 const statusConfig: Record<QuestStatus, { label: string; variant: 'gray' | 'amber' | 'green' }> = {
   open:          { label: 'Offen',       variant: 'gray'  },
@@ -20,20 +21,22 @@ const categoryEmoji: Record<string, string> = {
 
 interface QuestCardProps {
   quest: QuestNode
-  blockedDeps: QuestNode[]   // deps not yet done
+  blockedDeps: QuestNode[]
   childCount: number
   isUnlocked: boolean
-  onEdit:         (quest: QuestNode) => void
+  onEdit:          (quest: QuestNode) => void
   onDeleteRequest: (id: string) => void
-  onStatusChange: (id: string, status: QuestStatus) => void
+  onStatusChange:  (id: string, status: QuestStatus) => void
 }
 
 export function QuestCard({
   quest, blockedDeps, childCount, isUnlocked,
   onEdit, onDeleteRequest, onStatusChange,
 }: QuestCardProps) {
+  const { isGoal, toggleGoal } = useGoalStore()
   const status   = statusConfig[quest.status]
   const isLocked = !isUnlocked && quest.status === 'open'
+  const goal     = isGoal(quest.id)
 
   const nextStatus: QuestStatus =
     quest.status === 'open' ? 'in-progress' :
@@ -43,7 +46,8 @@ export function QuestCard({
     <div
       className={`
         bg-white rounded-2xl border p-4 shadow-sm transition-all duration-200
-        ${quest.status === 'done' ? 'border-emerald-100 opacity-75' : 'border-rose-100'}
+        ${goal ? 'border-pink-300 ring-1 ring-pink-100' :
+          quest.status === 'done' ? 'border-emerald-100 opacity-75' : 'border-rose-100'}
         ${isLocked ? 'opacity-60' : ''}
       `}
     >
@@ -71,6 +75,7 @@ export function QuestCard({
               {quest.title}
             </h3>
             {isLocked && <Lock size={11} className="text-gray-400" />}
+            {goal && <Target size={11} className="text-pink-400" />}
           </div>
 
           {quest.description && (
@@ -100,6 +105,13 @@ export function QuestCard({
 
         {/* Actions */}
         <div className="flex gap-1 flex-shrink-0">
+          <button
+            onClick={() => toggleGoal(quest.id)}
+            className={`p-1.5 rounded-lg transition-colors ${goal ? 'text-pink-400' : 'text-gray-300 hover:text-pink-400'}`}
+            title={goal ? 'Ziel entfernen' : 'Als Ziel setzen'}
+          >
+            <Target size={13} />
+          </button>
           <Button variant="ghost" size="sm" onClick={() => onEdit(quest)} className="!p-1.5">
             <Pencil size={13} />
           </Button>

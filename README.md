@@ -1,13 +1,23 @@
-# ⛏️ ATM10 Tracker — Alina's Quest & Item Planner
+# ⛏️ ATM10 Planner — Alina's Minecraft Planning Tool
 
-Eine persönliche Web-App zum Tracken von Quests, Gebäuden und Items für das Minecraft-Modpack **All the Mods 10**.
+Eine persönliche Web-App zum Planen und Tracken von Quests, Gebäuden und Items für das Minecraft-Modpack **All the Mods 10**. Die App ist vom reinen Tracker zum **Planungs- und Entscheidungs-Tool** gewachsen — mit Ziel-System, Ressourcenkalkulation und interaktivem Dependency-Graph.
 
 ---
 
 ## Features
 
+### 🎯 Ziel-System (Goal Planner)
+- Jedes Item oder jede Quest kann als **Ziel** gesetzt werden
+- Mehrere gleichzeitige Ziele werden unterstützt
+- Pro Ziel:
+  - **Fortschrittsbalken** mit done/available/locked Aufschlüsselung
+  - **"Das solltest du jetzt tun"** — nächste entsperrte Schritte (blau)
+  - **Blockiert durch** — noch gesperrte Vorbedingungen (rot)
+  - **Ressourcenkalkulation** — rekursive Berechnung aller benötigten Materialien mit Mengen-Multiplikatoren
+- Ziele persistent im localStorage (`atm10-goals-v1`)
+
 ### 📋 Quest-System
-- Quests erstellen, bearbeiten, löschen
+- Quests erstellen, bearbeiten, löschen (mit Undo)
 - Status-Zyklen: Offen → In Arbeit → Erledigt
 - Prioritäten: Niedrig / Mittel / Hoch
 - Kategorien: Progression, Building, Farming, Exploration, Crafting, Automation
@@ -16,38 +26,48 @@ Eine persönliche Web-App zum Tracken von Quests, Gebäuden und Items für das M
 - Filtern nach Status, Priorität, nur Haupt-Questlines
 - Suche nach Titel
 
+### 📦 Item-Tracker
+- Items mit Mod, Status, Grund, Zweck und Notizen tracken
+- Status: Gesucht 🔍 / Sammle 📥 / Habe ich ✅
+- **Echte Crafting-Ketten**: `requires`-Abhängigkeiten mit Mengenangabe (×8) ermöglichen rekursive Ressourcenberechnung (BOM-Kalkulation)
+- Verknüpfte Items und Quests (klickbar im Detailpanel)
+- Detailansicht als Seitenpanel — ohne Seitenwechsel
+- Grid- und Listenansicht
+- Filter nach Status und Mod, Suche nach Name
+
+### 🗺️ Dependency Graph
+- Interaktiver Graph aller Quests und Items mit ihren Abhängigkeiten
+- **Ziel-Highlighting**: aktives Ziel (pink 🎯), nächste Schritte (blau ▶), Blocker (rot 🔒), Pfad zum Ziel (violett)
+- Ziel direkt im Graph-Detailpanel setzen/entfernen
+- Crafting-Mengen als Edge-Labels (×8)
+- Filter: Status, Mod, Typ (Quests/Items)
+- Detailpanel beim Klick auf einen Node: Abhängigkeiten, Crafting-Zutaten, Fortschritt
+
 ### 🏗️ Gebäude-Planer
 - Gebäude mit Name, Ort, Stil, Status planen
 - Anforderungslisten pro Gebäude
 - Notizen & Inspo-Bereich
 - Status-Schnellwechsel direkt auf der Karte
-- Filtern & Suchen
-
-### 📦 Item-Tracker (JEI-inspiriert)
-- Items mit Mod, Status, Grund, Zweck, Zutaten und Notizen tracken
-- Status: Gesucht 🔍 / Sammle 📥 / Habe ich ✅
-- Verknüpfte Items (klickbar im Detailpanel)
-- Detailansicht als Seitenpanel — ohne Seitenwechsel
-- Grid- und Listenansicht
-- Filter nach Status und Mod, Suche nach Name
 
 ### 🏠 Dashboard
 - Fortschrittsbalken (erledigte Quests)
 - Schnellübersicht: aktive Quests, Gebäude im Bau, gesuchte Items
+- **Ziele-Widget**: aktive Ziele mit Fortschritt und nächsten Schritten
 - Nächste offene Quests und Items auf einen Blick
 
 ---
 
 ## Tech Stack
 
-| Technologie | Version |
-|---|---|
+| Technologie       | Version  |
+|-------------------|----------|
 | Next.js (App Router) | 16.2.1 |
-| React | 19 |
-| TypeScript | 5 |
-| Tailwind CSS | 4 |
-| Zustand | latest |
-| lucide-react | latest |
+| React             | 19       |
+| TypeScript        | 5        |
+| Tailwind CSS      | 4        |
+| Zustand           | latest   |
+| @xyflow/react     | 12       |
+| lucide-react      | latest   |
 
 ---
 
@@ -55,16 +75,16 @@ Eine persönliche Web-App zum Tracken von Quests, Gebäuden und Items für das M
 
 ```bash
 # Abhängigkeiten installieren
-npm install
+pnpm install
 
-# Dev-Server starten (läuft auf localhost:3000)
-npm run dev
+# Dev-Server starten (läuft auf localhost:2710)
+pnpm dev
+
+# Alle Quality Gates (lint + typecheck)
+pnpm gates
 
 # Production Build
-npm run build
-
-# Production Server starten
-npm start
+pnpm build
 ```
 
 ---
@@ -75,43 +95,46 @@ npm start
 src/
 ├── app/
 │   ├── layout.tsx          # Root Layout mit AppShell
-│   ├── page.tsx            # Dashboard
-│   ├── globals.css         # Globale Styles (Tailwind + Scrollbar)
+│   ├── page.tsx            # Dashboard (mit Ziele-Widget)
+│   ├── goals/page.tsx      # Ziel-Planer mit Ressourcenkalkulation
 │   ├── quests/page.tsx     # Quest-Verwaltung
+│   ├── items/page.tsx      # Item-Tracker
 │   ├── buildings/page.tsx  # Gebäude-Planer
-│   └── items/page.tsx      # Item-Tracker
+│   └── graph/page.tsx      # Dependency Graph mit Highlighting
 │
 ├── components/
 │   ├── layout/
 │   │   ├── AppShell.tsx    # Sidebar-Shell + Store-Hydration
-│   │   └── Sidebar.tsx     # Navigation (Mobile Drawer + Desktop)
-│   ├── ui/
-│   │   ├── Button.tsx
-│   │   ├── Badge.tsx
-│   │   ├── Input.tsx       # Input, Textarea, Select
-│   │   ├── Modal.tsx
-│   │   └── EmptyState.tsx
-│   ├── quests/
-│   │   ├── QuestCard.tsx
-│   │   └── QuestForm.tsx
-│   ├── buildings/
-│   │   ├── BuildingCard.tsx
-│   │   └── BuildingForm.tsx
-│   └── items/
-│       ├── ItemCard.tsx
-│       ├── ItemForm.tsx
-│       └── ItemDetail.tsx
+│   │   └── Sidebar.tsx     # Navigation
+│   ├── ui/                 # Button, Badge, Input, Modal, EmptyState
+│   ├── graph/
+│   │   ├── GraphView.tsx   # ReactFlow Canvas
+│   │   ├── GraphQuestNode.tsx  # Custom Node: Quest (mit Highlight-Styles)
+│   │   └── GraphItemNode.tsx   # Custom Node: Item (mit Highlight-Styles)
+│   ├── quests/             # QuestCard, QuestForm
+│   ├── buildings/          # BuildingCard, BuildingForm
+│   └── items/              # ItemCard, ItemForm, ItemDetail
+│
+├── lib/
+│   ├── planning/
+│   │   └── index.ts        # getRequiredNodes, getNextSteps, getBlockers, calculateResources, getGoalProgress
+│   ├── progression/
+│   │   └── index.ts        # getNodeState, isUnlocked, getDependencyChain
+│   └── graph/
+│       ├── convert.ts      # convertNodesToGraph (mit Highlight-Sets)
+│       └── layout.ts       # applyAutoLayout (dagre)
 │
 ├── store/
-│   ├── useQuestStore.ts    # Zustand + localStorage
-│   ├── useBuildingStore.ts
-│   └── useItemStore.ts
+│   ├── useQuestStore.ts    # Zustand + localStorage (atm10-quests-v2)
+│   ├── useBuildingStore.ts # Zustand + localStorage (atm10-buildings-v2)
+│   ├── useItemStore.ts     # Zustand + localStorage (atm10-items-v2)
+│   └── useGoalStore.ts     # Zustand + localStorage (atm10-goals-v1)
 │
 ├── types/
-│   └── index.ts            # Alle TypeScript-Interfaces
+│   └── index.ts            # QuestNode, ItemNode, BuildingNode, Goal, Dependency, AnyNode
 │
 └── data/
-    └── mockData.ts         # Beispieldaten (Quests, Gebäude, Items)
+    └── mockData.ts         # Beispieldaten mit echten Crafting-Ketten
 ```
 
 ---
@@ -120,11 +143,12 @@ src/
 
 Alle Daten werden automatisch im **localStorage** des Browsers gespeichert:
 
-| Store | localStorage-Key |
-|---|---|
-| Quests | `atm10-quests` |
-| Gebäude | `atm10-buildings` |
-| Items | `atm10-items` |
+| Store     | localStorage-Key     |
+|-----------|----------------------|
+| Quests    | `atm10-quests-v2`    |
+| Gebäude   | `atm10-buildings-v2` |
+| Items     | `atm10-items-v2`     |
+| Ziele     | `atm10-goals-v1`     |
 
 > Die Daten bleiben nach einem Reload erhalten. Sie sind nur lokal im Browser gespeichert — kein Server, keine Datenbank.
 
@@ -132,63 +156,72 @@ Alle Daten werden automatisch im **localStorage** des Browsers gespeichert:
 
 ## Datenmodelle
 
-### Quest
+### QuestNode
 ```ts
-interface Quest {
-  id: string
-  title: string
-  description: string
+interface QuestNode {
+  id: string; type: 'quest'
+  title: string; description: string; notes: string
   status: 'open' | 'in-progress' | 'done'
   priority: 'low' | 'medium' | 'high'
   category: 'progression' | 'building' | 'farming' | 'exploration' | 'crafting' | 'automation' | 'other'
-  parentId: string | null       // für Questlines
-  dependsOn: string[]           // IDs von Quests, die zuerst erledigt sein müssen
-  notes: string
-  createdAt: string
-  updatedAt: string
+  parentId: string | null        // für Questlines
+  dependencies: Dependency[]     // requires / unlocks / related
+  createdAt: string; updatedAt: string
 }
 ```
 
-### Building
+### ItemNode
 ```ts
-interface Building {
-  id: string
-  name: string
-  location: string
-  style: string
-  status: 'planned' | 'in-progress' | 'done'
-  requirements: string[]
-  inspoPics: string[]
-  notes: string
-  createdAt: string
-  updatedAt: string
-}
-```
-
-### Item
-```ts
-interface Item {
-  id: string
-  name: string
-  mod: string
+interface ItemNode {
+  id: string; type: 'item'
+  name: string; mod: string
   status: 'needed' | 'collecting' | 'have'
-  reason: string                // warum brauche ich das?
-  purpose: string               // wofür ist es?
-  ingredients: { name: string; amount: number; unit?: string }[]
-  linkedItemIds: string[]
-  notes: string
+  reason: string; purpose: string; notes: string
+  dependencies: Dependency[]     // requires (mit amount!) / related / unlocks
+  createdAt: string; updatedAt: string
+}
+```
+
+### Dependency
+```ts
+interface Dependency {
+  targetId: string
+  type: 'requires' | 'unlocks' | 'related'
+  amount?: number   // Crafting: wie viele von targetId werden benötigt? (aktiviert BOM-Kalkulation)
+}
+```
+
+### Goal
+```ts
+interface Goal {
+  id: string
+  targetNodeId: string   // ID eines QuestNode oder ItemNode
   createdAt: string
-  updatedAt: string
 }
 ```
 
 ---
 
+## Planning Logic (`lib/planning/`)
+
+Alle Planungs-Funktionen sind reine Funktionen ohne UI- oder Store-Imports:
+
+| Funktion | Beschreibung |
+|---|---|
+| `getRequiredNodesForGoal(id, nodes)` | Alle transitiven `requires`-Abhängigkeiten |
+| `getNextStepsForGoal(id, nodes)` | Entsperrte, nicht-fertige Nodes im Pfad |
+| `getBlockingNodesForGoal(id, nodes)` | Gesperrte Nodes, die den Fortschritt blockieren |
+| `getGoalProgress(id, nodes)` | `{ total, done, available, locked, percent }` |
+| `calculateTotalResources(id, nodes)` | Rekursive BOM mit Mengen-Multiplikatoren |
+
+Die Ressourcenberechnung traversiert den Dependency-Graphen rekursiv:
+- ME Controller → 8× Fluix Crystal → je 1× Certus Seed → **8× Certus Seed** gesamt
+
+---
+
 ## Bekannte Einschränkungen
 
-- Keine Bild-Uploads (Inspo-Bilder noch nicht implementiert)
-- Kein Confirm-Dialog beim Löschen
-- Keine Drag & Drop Sortierung
+- Keine Bild-Uploads (Inspo-Bilder)
 - Keine Export-Funktion (JSON/CSV)
 - Kein Dark Mode
 - Keine echten Mod-API-Daten — nur Mock-Daten als Startpunkt

@@ -3,6 +3,7 @@
 export interface Dependency {
   targetId: string
   type: 'requires' | 'unlocks' | 'related'
+  amount?: number   // crafting: how many of targetId are needed to make 1 of this
 }
 
 // ─── Quest ────────────────────────────────────────────────────────────────────
@@ -22,7 +23,7 @@ export interface QuestNode {
   priority: QuestPriority
   category: QuestCategory
   parentId: string | null
-  dependencies: Dependency[]   // replaces dependsOn + linkedIds
+  dependencies: Dependency[]
   notes: string
   createdAt: string
   updatedAt: string
@@ -32,28 +33,30 @@ export interface QuestNode {
 
 export type ItemStatus = 'needed' | 'collecting' | 'have'
 
-export interface Ingredient {
-  name: string
-  amount: number
-  unit?: string
-}
-
 export interface ItemNode {
   id: string
   type: 'item'
-  name: string               // display name
+  name: string
   mod: string
   status: ItemStatus
   reason: string
   purpose: string
-  ingredients: Ingredient[]  // text-based recipe for display
-  dependencies: Dependency[] // node-level links (requires/related)
+  // No more free-text ingredients — crafting is expressed via dependencies with amount
+  dependencies: Dependency[]
   notes: string
   createdAt: string
   updatedAt: string
 }
 
 export type AnyNode = QuestNode | ItemNode
+
+// ─── Goal ─────────────────────────────────────────────────────────────────────
+
+export interface Goal {
+  id: string
+  targetNodeId: string
+  createdAt: string
+}
 
 // ─── Building (not in graph) ──────────────────────────────────────────────────
 

@@ -1,10 +1,14 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
-import { useQuestStore } from '@/store/useQuestStore'
+import { useQuestStore }   from '@/store/useQuestStore'
 import { useBuildingStore } from '@/store/useBuildingStore'
-import { useItemStore } from '@/store/useItemStore'
+import { useItemStore }    from '@/store/useItemStore'
+import { useGoalStore }    from '@/store/useGoalStore'
 import { Badge } from '@/components/ui/Badge'
+import { getNodeTitle, type AnyNode } from '@/types'
+import { getGoalProgress, getNextStepsForGoal } from '@/lib/planning'
 
 function StatCard({
   emoji,
@@ -37,9 +41,12 @@ function StatCard({
 }
 
 export default function DashboardPage() {
-  const quests = useQuestStore((s) => s.quests)
+  const quests    = useQuestStore((s) => s.quests)
   const buildings = useBuildingStore((s) => s.buildings)
-  const items = useItemStore((s) => s.items)
+  const items     = useItemStore((s) => s.items)
+  const { goals } = useGoalStore()
+
+  const allNodes: AnyNode[] = useMemo(() => [...quests, ...items], [quests, items])
 
   const questStats = {
     total: quests.length,
@@ -120,6 +127,49 @@ export default function DashboardPage() {
           href="/items"
         />
       </div>
+
+      {/* Goals widget */}
+      {goals.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-700">🎯 Aktive Ziele</h2>
+            <Link href="/goals" className="text-xs text-pink-500 hover:text-pink-600">Alle →</Link>
+          </div>
+          <div className="flex flex-col gap-3">
+            {goals.slice(0, 3).map(goal => {
+              const targetNode = allNodes.find(n => n.id === goal.targetNodeId)
+              if (!targetNode) return null
+              const progress  = getGoalProgress(goal.targetNodeId, allNodes)
+              const nextSteps = getNextStepsForGoal(goal.targetNodeId, allNodes).slice(0, 2)
+              return (
+                <div key={goal.id} className="bg-white rounded-xl border border-rose-100 p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-base">🎯</span>
+                    <span className="text-sm font-semibold text-gray-800 flex-1 truncate">{getNodeTitle(targetNode)}</span>
+                    <span className="text-xs font-bold text-pink-500">{progress.percent}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-rose-50 mb-2">
+                    <div
+                      className="h-full rounded-full bg-pink-400 transition-all duration-500"
+                      style={{ width: `${progress.percent}%` }}
+                    />
+                  </div>
+                  {nextSteps.length > 0 && (
+                    <div className="flex flex-col gap-1">
+                      {nextSteps.map(n => (
+                        <div key={n.id} className="flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg px-2 py-1">
+                          <span>▶</span>
+                          <span className="truncate">{getNodeTitle(n)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent quests */}

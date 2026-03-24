@@ -1,15 +1,17 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import { Maximize2, Filter } from 'lucide-react'
+import { Filter, Target } from 'lucide-react'
 
 import { useQuestStore }    from '@/store/useQuestStore'
 import { useItemStore }     from '@/store/useItemStore'
+import { useGoalStore }     from '@/store/useGoalStore'
 import { GraphView }        from '@/components/graph/GraphView'
 import { convertNodesToGraph } from '@/lib/graph/convert'
 import { applyAutoLayout }     from '@/lib/graph/layout'
 import { getNodeTitle, isNodeDone, type AnyNode } from '@/types'
 import { getNodeState, getBlockedDependencies, getDependencyChain } from '@/lib/progression'
+import { getRequiredNodesForGoal, getNextStepsForGoal, getBlockingNodesForGoal } from '@/lib/planning'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 
@@ -26,10 +28,29 @@ export default function GraphPage() {
   const [selectedNode, setSelectedNode]   = useState<AnyNode | null>(null)
   const [showFilters, setShowFilters]     = useState(false)
 
+  const { goals, toggleGoal, isGoal } = useGoalStore()
+
   const allNodes: AnyNode[] = useMemo(
     () => [...quests, ...items],
     [quests, items]
   )
+
+  // Compute goal highlight sets for all active goals
+  const highlights = useMemo(() => {
+    const goalIds     = new Set<string>()
+    const nextStepIds = new Set<string>()
+    const blockerIds  = new Set<string>()
+    const pathIds     = new Set<string>()
+
+    goals.forEach(g => {
+      goalIds.add(g.targetNodeId)
+      getRequiredNodesForGoal(g.targetNodeId, allNodes).forEach(n => pathIds.add(n.id))
+      getNextStepsForGoal(g.targetNodeId, allNodes).forEach(n => nextStepIds.add(n.id))
+      getBlockingNodesForGoal(g.targetNodeId, allNodes).forEach(n => blockerIds.add(n.id))
+    })
+
+    return { goalIds, nextStepIds, blockerIds, pathIds }
+  }, [goals, allNodes])
 
   const allMods = useMemo(() => {
     const mods = Array.from(new Set(items.map(i => i.mod).filter(Boolean))).sort()
@@ -52,8 +73,8 @@ export default function GraphPage() {
   }, [allNodes, showQuests, showItems, statusFilter, modFilter])
 
   const { nodes: rawNodes, edges } = useMemo(
-    () => convertNodesToGraph(allNodes, visibleNodes),
-    [allNodes, visibleNodes]
+    () => convertNodesToGraph(allNodes, visibleNodes, highlights),
+    [allNodes, visibleNodes, highlights]
   )
 
   const nodes = useMemo(
@@ -155,12 +176,19 @@ export default function GraphPage() {
       )}
 
       {/* Legend */}
-      <div className="flex items-center gap-4 px-4 py-1.5 bg-white border-b border-rose-50 text-xs text-gray-400 flex-shrink-0">
+      <div className="flex flex-wrap items-center gap-4 px-4 py-1.5 bg-white border-b border-rose-50 text-xs text-gray-400 flex-shrink-0">
         <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-orange-400 inline-block" /> requires</span>
         <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-purple-400 inline-block" style={{ borderTop: '1px dashed #a78bfa' }} /> related</span>
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> verfügbar</span>
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-gray-300 inline-block" /> gesperrt</span>
         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" /> erledigt</span>
+        {goals.length > 0 && (
+          <>
+            <span className="flex items-center gap-1 text-pink-500">🎯 Ziel</span>
+            <span className="flex items-center gap-1 text-blue-500">▶ nächster Schritt</span>
+            <span className="flex items-center gap-1 text-red-400">🔒 Blocker</span>
+          </>
+        )}
       </div>
 
       {/* Main canvas + detail */}
@@ -197,6 +225,17 @@ export default function GraphPage() {
                     <p className="text-xs text-pink-400">{selectedNode.mod}</p>
                   )}
                 </div>
+                <button
+                  onClick={() => toggleGoal(selectedNode.id)}
+                  className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${
+                    isGoal(selectedNode.id)
+                      ? 'bg-pink-100 text-pink-500'
+                      : 'text-gray-300 hover:text-pink-400'
+                  }`}
+                  title={isGoal(selectedNode.id) ? 'Ziel entfernen' : 'Als Ziel setzen'}
+                >
+                  <Target size={13} />
+                </button>
               </div>
               {nodeState && (
                 <div className="mt-2">
@@ -292,20 +331,30 @@ export default function GraphPage() {
                 </div>
               )}
 
-              {/* Ingredients (items) */}
-              {selectedNode.type === 'item' && selectedNode.ingredients.length > 0 && (
-                <div>
-                  <p className="font-semibold text-gray-500 mb-1.5">🧪 Zutaten</p>
-                  <div className="flex flex-col gap-1">
-                    {selectedNode.ingredients.map((ing, i) => (
-                      <div key={i} className="flex justify-between rounded-lg bg-gray-50 px-2 py-1.5">
-                        <span className="text-gray-700">{ing.name}</span>
-                        <span className="font-medium text-pink-500">{ing.amount}x</span>
-                      </div>
-                    ))}
+              {/* Crafting deps (items) */}
+              {selectedNode.type === 'item' && (() => {
+                const craftDeps = selectedNode.dependencies
+                  .filter(d => d.type === 'requires' && d.amount != null)
+                  .map(d => ({ dep: d, node: allNodes.find(n => n.id === d.targetId) }))
+                  .filter((x): x is { dep: typeof x.dep; node: AnyNode } => !!x.node)
+                return craftDeps.length > 0 ? (
+                  <div>
+                    <p className="font-semibold text-gray-500 mb-1.5">🧪 Crafting-Zutaten</p>
+                    <div className="flex flex-col gap-1">
+                      {craftDeps.map(({ dep, node }) => (
+                        <button
+                          key={dep.targetId}
+                          onClick={() => setSelectedNode(node)}
+                          className="flex justify-between rounded-lg bg-gray-50 px-2 py-1.5 hover:bg-gray-100 transition-colors text-left"
+                        >
+                          <span className="text-gray-700">{getNodeTitle(node)}</span>
+                          <span className="font-medium text-pink-500">×{dep.amount}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                ) : null
+              })()}
             </div>
 
             <div className="px-4 py-3 border-t border-rose-50">

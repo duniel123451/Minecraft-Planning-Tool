@@ -6,6 +6,7 @@ import { Sidebar } from './Sidebar'
 import { useQuestStore }   from '@/store/useQuestStore'
 import { useBuildingStore } from '@/store/useBuildingStore'
 import { useItemStore }    from '@/store/useItemStore'
+import { useGoalStore }    from '@/store/useGoalStore'
 
 interface AppShellProps {
   children: ReactNode
@@ -15,15 +16,17 @@ export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
-    // 1. Rehydrate from localStorage (if data exists there)
+    // 1. Rehydrate from localStorage
     useQuestStore.persist.rehydrate()
     useBuildingStore.persist.rehydrate()
     useItemStore.persist.rehydrate()
+    useGoalStore.persist.rehydrate()
 
-    // 2. If localStorage was empty (_dataVersion === 0), load mock data exactly once
+    // 2. Load mock data only on very first run (_dataVersion === 0)
     useQuestStore.getState().initializeIfNeeded()
     useBuildingStore.getState().initializeIfNeeded()
     useItemStore.getState().initializeIfNeeded()
+    useGoalStore.getState().initializeIfNeeded()
   }, [])
 
   return (

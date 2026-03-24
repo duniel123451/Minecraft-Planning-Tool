@@ -1,9 +1,10 @@
 'use client'
 
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, Target } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import type { ItemNode, ItemStatus } from '@/types'
+import { useGoalStore } from '@/store/useGoalStore'
 
 const statusConfig: Record<ItemStatus, { label: string; variant: 'red' | 'amber' | 'green'; emoji: string }> = {
   needed:     { label: 'Gesucht',    variant: 'red',   emoji: '🔍' },
@@ -20,18 +21,21 @@ interface ItemCardProps {
 }
 
 export function ItemCard({ item, onEdit, onDeleteRequest, onStatusChange, onClick }: ItemCardProps) {
+  const { isGoal, toggleGoal } = useGoalStore()
   const status = statusConfig[item.status]
   const nextStatus: ItemStatus =
     item.status === 'needed' ? 'collecting' : item.status === 'collecting' ? 'have' : 'needed'
 
-  const depCount = item.dependencies.filter(d => d.type === 'requires').length
+  const craftCount = item.dependencies.filter(d => d.type === 'requires' && d.amount != null).length
+  const depCount   = item.dependencies.filter(d => d.type === 'requires').length
+  const goal       = isGoal(item.id)
 
   return (
     <div
       className={`
         bg-white rounded-2xl border shadow-sm p-4 cursor-pointer
         hover:shadow-md transition-all duration-200
-        ${item.status === 'have' ? 'border-emerald-100 opacity-80' : 'border-rose-100'}
+        ${goal ? 'border-pink-300 ring-1 ring-pink-100' : item.status === 'have' ? 'border-emerald-100 opacity-80' : 'border-rose-100'}
       `}
       onClick={() => onClick(item)}
     >
@@ -47,6 +51,7 @@ export function ItemCard({ item, onEdit, onDeleteRequest, onStatusChange, onClic
             >
               {item.name}
             </h3>
+            {goal && <Target size={11} className="text-pink-400 flex-shrink-0" />}
           </div>
           <p className="text-xs text-pink-400 font-medium mt-0.5 ml-7">{item.mod}</p>
         </div>
@@ -78,11 +83,20 @@ export function ItemCard({ item, onEdit, onDeleteRequest, onStatusChange, onClic
       </div>
 
       {/* Meta */}
-      {(item.ingredients.length > 0 || depCount > 0) && (
-        <div className="mt-2 text-xs text-gray-400">
-          {item.ingredients.length > 0 && `🧪 ${item.ingredients.length} Zutat${item.ingredients.length > 1 ? 'en' : ''}`}
-          {item.ingredients.length > 0 && depCount > 0 && ' · '}
-          {depCount > 0 && `⛓️ ${depCount} Voraussetzung${depCount > 1 ? 'en' : ''}`}
+      {(craftCount > 0 || depCount > 0) && (
+        <div className="mt-2 flex items-center justify-between">
+          <div className="text-xs text-gray-400">
+            {craftCount > 0 && `🧪 ${craftCount} Zutat${craftCount > 1 ? 'en' : ''}`}
+            {craftCount > 0 && depCount > craftCount && ' · '}
+            {depCount > craftCount && `⛓️ ${depCount - craftCount} weitere Dep${depCount - craftCount > 1 ? 's' : ''}`}
+          </div>
+          <button
+            onClick={e => { e.stopPropagation(); toggleGoal(item.id) }}
+            className={`text-xs transition-colors ${goal ? 'text-pink-400' : 'text-gray-300 hover:text-pink-400'}`}
+            title={goal ? 'Ziel entfernen' : 'Als Ziel setzen'}
+          >
+            <Target size={12} />
+          </button>
         </div>
       )}
     </div>
