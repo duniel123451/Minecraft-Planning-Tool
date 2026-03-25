@@ -94,7 +94,7 @@ export default function GoalsPage() {
                       <span>{progress.done}/{progress.total} Schritte erledigt</span>
                       <span className="font-semibold text-pink-500">{progress.percent}%</span>
                     </div>
-                    <div className="h-2 rounded-full bg-white/60 dark:bg-slate-700 border border-rose-100 dark:border-slate-600">
+                    <div className="h-2 rounded-full bg-rose-100/60 dark:bg-slate-700">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${isDone ? 'bg-emerald-400' : 'bg-pink-400'}`}
                         style={{ width: `${progress.percent}%` }}
@@ -102,8 +102,8 @@ export default function GoalsPage() {
                     </div>
                     <div className="flex gap-3 mt-1.5 text-xs text-gray-400 dark:text-slate-500">
                       {progress.done > 0 && <span className="text-emerald-500">✓ {progress.done} erledigt</span>}
-                      {progress.available > 0 && <span className="text-blue-500">▶ {progress.available} verfügbar</span>}
-                      {progress.locked > 0 && <span>🔒 {progress.locked} gesperrt</span>}
+                      {progress.available > 0 && <span className="text-pink-400">▶ {progress.available} verfügbar</span>}
+                      {progress.locked > 0 && <span className="text-gray-400 dark:text-slate-500">🔒 {progress.locked} gesperrt</span>}
                     </div>
                   </div>
                 </div>
@@ -154,7 +154,7 @@ export default function GoalsPage() {
                                 <Trash2 size={11} />
                               </button>
                             </div>
-                            <div className="h-1 rounded-full bg-rose-100 dark:bg-slate-600">
+                            <div className="h-1 rounded-full bg-rose-100/60 dark:bg-slate-600">
                               <div
                                 className={`h-full rounded-full transition-all ${subDone ? 'bg-emerald-400' : 'bg-pink-300'}`}
                                 style={{ width: `${subProgress.percent}%` }}

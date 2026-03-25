@@ -85,9 +85,9 @@ html.dark .text-gray-500 { color: #8b949e !important; }
 html.dark .text-gray-400 { color: #6e7681 !important; }
 html.dark .text-gray-300 { color: #484f58 !important; }
 
-/* Form controls */
-html.dark input:not([type='file']):not([type='checkbox']):not([type='radio']),
-html.dark textarea,
+/* Form controls — exclude transparent inputs (search bars sit inside styled wrappers) */
+html.dark input:not([type='file']):not([type='checkbox']):not([type='radio']):not(.bg-transparent),
+html.dark textarea:not(.bg-transparent),
 html.dark select {
   background-color: #21262d !important;
   color: #e6edf3 !important;
