@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import type { ItemNode, ItemStatus } from '@/types'
 import { useGoalStore } from '@/store/useGoalStore'
+import { getRichTextPreview } from '@/lib/richText'
 
 const statusConfig: Record<ItemStatus, { label: string; variant: 'red' | 'amber' | 'green'; emoji: string }> = {
   needed:     { label: 'Gesucht',    variant: 'red',   emoji: '🔍' },
@@ -30,6 +31,7 @@ export function ItemCard({ item, onEdit, onDeleteRequest, onStatusChange, onClic
   const craftCount = item.dependencies.filter(d => d.type === 'requires' && d.amount != null).length
   const depCount   = item.dependencies.filter(d => d.type === 'requires').length
   const goal       = isGoal(item.id)
+  const reasonPreview = getRichTextPreview(item.reason, 120)
 
   return (
     <div
@@ -68,8 +70,8 @@ export function ItemCard({ item, onEdit, onDeleteRequest, onStatusChange, onClic
       </div>
 
       {/* Reason */}
-      {item.reason && (
-        <p className="mt-2 text-xs text-gray-500 line-clamp-2 ml-7">{item.reason}</p>
+      {reasonPreview && (
+        <p className="mt-2 text-xs text-gray-500 line-clamp-2 ml-7">{reasonPreview}</p>
       )}
 
       {/* Bottom row */}
@@ -92,7 +94,16 @@ export function ItemCard({ item, onEdit, onDeleteRequest, onStatusChange, onClic
             {depCount > craftCount && `⛓️ ${depCount - craftCount} weitere Dep${depCount - craftCount > 1 ? 's' : ''}`}
           </div>
           <button
-            onClick={e => { e.stopPropagation(); goal ? toggleGoal(item.id) : (onGoalCreate ? onGoalCreate(item) : toggleGoal(item.id)) }}
+            onClick={e => {
+              e.stopPropagation()
+              if (goal) {
+                toggleGoal(item.id)
+              } else if (onGoalCreate) {
+                onGoalCreate(item)
+              } else {
+                toggleGoal(item.id)
+              }
+            }}
             className={`text-xs transition-colors ${goal ? 'bg-pink-50 text-pink-400 rounded-md p-0.5' : 'text-gray-300 hover:text-pink-400'}`}
             title={goal ? 'Ziel entfernen' : 'Ziel planen…'}
           >

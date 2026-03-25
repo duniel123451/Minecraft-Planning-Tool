@@ -12,11 +12,11 @@ const statusStyles: Record<string, { bg: string; border: string; text: string; d
 }
 
 export const GraphBuildingNode = memo(({ data }: NodeProps<Node<GraphNodeData>>) => {
+  const items = useItemStore(s => s.items)
   if (data.node.type !== 'building') return null
 
   const building = data.node
   const s = statusStyles[building.status] ?? statusStyles.planned
-  const items = useItemStore(s => s.items)
 
   const reqs = (building.itemRequirements ?? [])
     .map(req => ({ ...req, item: items.find(i => i.id === req.itemId) }))

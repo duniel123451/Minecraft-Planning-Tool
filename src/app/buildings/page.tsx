@@ -154,6 +154,7 @@ export default function BuildingsPage() {
       )}
 
       <BuildingForm
+        key={formOpen ? (editTarget?.id ?? 'new') : 'closed'}
         open={formOpen}
         onClose={handleFormClose}
         onSubmit={handleSubmit}

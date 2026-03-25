@@ -1,5 +1,7 @@
 // ─── Shared Graph Types ───────────────────────────────────────────────────────
 
+import type { NoteNode } from './note'
+
 export interface Dependency {
   targetId: string
   type: 'requires' | 'unlocks' | 'related'
@@ -61,6 +63,7 @@ export interface InventoryItem {
 }
 
 export type AnyNode = QuestNode | ItemNode | Building
+export type LinkableNode = AnyNode | NoteNode
 
 // ─── Goal ─────────────────────────────────────────────────────────────────────
 
@@ -100,8 +103,8 @@ export interface Building {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-export function getNodeTitle(node: AnyNode): string {
-  if (node.type === 'quest') return node.title
+export function getNodeTitle(node: AnyNode | NoteNode): string {
+  if (node.type === 'quest' || node.type === 'note') return node.title
   return node.name  // items and buildings both have .name
 }
 

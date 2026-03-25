@@ -11,7 +11,7 @@ interface RelatedNotesProps {
 export function RelatedNotes({ nodeId }: RelatedNotesProps) {
   const allNotes = useNoteStore(s => s.notes)
   const notes = useMemo(
-    () => allNotes.filter(n => n.linkedNodeIds.includes(nodeId)),
+    () => allNotes.filter(n => n.links.some(link => link.targetId === nodeId)),
     [allNotes, nodeId],
   )
 

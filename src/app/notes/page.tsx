@@ -13,8 +13,9 @@ import { UndoToast }  from '@/components/ui/UndoToast'
 import { Button }     from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { deleteImages, isDataUrl } from '@/lib/imageStorage'
+import { getPlainTextFromHtml } from '@/lib/richText'
 import type { NoteNode } from '@/types/note'
-import type { AnyNode } from '@/types'
+import type { LinkableNode } from '@/types'
 
 export default function NotesPage() {
   const { notes, addNote, updateNote, deleteNote, undoDelete, lastDeleted } = useNoteStore()
@@ -22,9 +23,9 @@ export default function NotesPage() {
   const { items }     = useItemStore()
   const { buildings } = useBuildingStore()
 
-  const allNodes: AnyNode[] = useMemo(
-    () => [...quests, ...items, ...buildings],
-    [quests, items, buildings],
+  const linkableNodes: LinkableNode[] = useMemo(
+    () => [...notes, ...quests, ...items, ...buildings],
+    [notes, quests, items, buildings],
   )
 
   const [formOpen, setFormOpen]       = useState(false)
@@ -46,7 +47,7 @@ export default function NotesPage() {
         const q = search.toLowerCase()
         const match =
           n.title.toLowerCase().includes(q) ||
-          n.content.toLowerCase().includes(q) ||
+          getPlainTextFromHtml(n.content).toLowerCase().includes(q) ||
           n.tags.some(t => t.toLowerCase().includes(q))
         if (!match) return false
       }
@@ -70,7 +71,7 @@ export default function NotesPage() {
     setEditTarget(null)
   }
 
-  const handleSubmit = (data: Omit<NoteNode, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleSubmit = (data: Omit<NoteNode, 'id' | 'type' | 'createdAt' | 'updatedAt'>) => {
     if (editTarget) {
       updateNote(editTarget.id, data)
     } else {
@@ -176,7 +177,8 @@ export default function NotesPage() {
             <NoteCard
               key={note.id}
               note={note}
-              allNodes={allNodes}
+              linkableNodes={linkableNodes}
+              notes={notes}
               onEdit={handleEdit}
               onDelete={setDeleteId}
             />
@@ -190,7 +192,7 @@ export default function NotesPage() {
         onClose={handleFormClose}
         onSubmit={handleSubmit}
         initialData={editTarget}
-        allNodes={allNodes}
+        allNodes={linkableNodes}
       />
 
       <ConfirmDialog

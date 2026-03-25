@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
-import { Input, Textarea, Select } from '@/components/ui/Input'
+import { Input, Select } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { RichTextEditor } from '@/components/ui/RichTextEditor'
 import { getNodeTitle } from '@/types'
 import type { ItemNode, ItemStatus, Dependency, AnyNode } from '@/types'
+import { normalizeRichTextInput, sanitizeRichText } from '@/lib/richText'
 
 interface ItemFormProps {
   open: boolean
@@ -25,23 +26,19 @@ const emptyForm = {
 }
 
 export function ItemForm({ open, onClose, onSubmit, initialData, allNodes }: ItemFormProps) {
-  const [form, setForm] = useState(emptyForm)
-
-  useEffect(() => {
-    if (initialData) {
-      setForm({
-        name:         initialData.name,
-        mod:          initialData.mod,
-        status:       initialData.status,
-        reason:       initialData.reason,
-        purpose:      initialData.purpose,
-        dependencies: [...initialData.dependencies],
-        notes:        initialData.notes,
-      })
-    } else {
-      setForm(emptyForm)
-    }
-  }, [initialData, open])
+  const [form, setForm] = useState(() =>
+    initialData
+      ? {
+          name:         initialData.name,
+          mod:          initialData.mod,
+          status:       initialData.status,
+          reason:       normalizeRichTextInput(initialData.reason),
+          purpose:      normalizeRichTextInput(initialData.purpose),
+          dependencies: [...initialData.dependencies],
+          notes:        normalizeRichTextInput(initialData.notes),
+        }
+      : emptyForm
+  )
 
   const toggleDep = (targetId: string, defaultType: Dependency['type'] = 'requires') => {
     setForm(p => {
@@ -75,13 +72,18 @@ export function ItemForm({ open, onClose, onSubmit, initialData, allNodes }: Ite
 
   const handleSubmit = () => {
     if (!form.name.trim()) return
-    onSubmit(form)
+    onSubmit({
+      ...form,
+      reason:  sanitizeRichText(form.reason),
+      purpose: sanitizeRichText(form.purpose),
+      notes:   sanitizeRichText(form.notes),
+    })
     onClose()
   }
 
   return (
     <Modal open={open} onClose={onClose} title={initialData ? 'Item bearbeiten' : 'Neues Item'} maxWidth="max-w-xl">
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 pb-24">
         <div className="grid grid-cols-2 gap-3">
           <Input
             label="Item Name *"
@@ -107,11 +109,19 @@ export function ItemForm({ open, onClose, onSubmit, initialData, allNodes }: Ite
           <option value="have">✅ Habe ich</option>
         </Select>
 
-        <Textarea label="Warum brauch ich das?" value={form.reason}
-          onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} rows={2} />
+        <RichTextEditor
+          label="Warum brauch ich das?"
+          value={form.reason}
+          onChange={value => setForm(p => ({ ...p, reason: value }))}
+          placeholder="Motivation, Blocker, Kontext..."
+        />
 
-        <Textarea label="Wofür ist es?" value={form.purpose}
-          onChange={e => setForm(p => ({ ...p, purpose: e.target.value }))} rows={2} />
+        <RichTextEditor
+          label="Wofür ist es?"
+          value={form.purpose}
+          onChange={value => setForm(p => ({ ...p, purpose: value }))}
+          placeholder="Welche Projekte profitieren davon?"
+        />
 
         {/* Node Dependencies */}
         {candidates.length > 0 && (
@@ -170,15 +180,19 @@ export function ItemForm({ open, onClose, onSubmit, initialData, allNodes }: Ite
           </div>
         )}
 
-        <Textarea label="Notizen" value={form.notes}
-          onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} rows={2} />
+        <RichTextEditor
+          label="Notizen"
+          value={form.notes}
+          onChange={value => setForm(p => ({ ...p, notes: value }))}
+          placeholder="Links, Crafting-Tipps, Testresultate..."
+        />
 
-        <div className="flex justify-end gap-2 pt-1">
-          <Button variant="secondary" onClick={onClose}>Abbrechen</Button>
-          <Button onClick={handleSubmit} disabled={!form.name.trim()}>
-            {initialData ? 'Speichern' : 'Erstellen'}
-          </Button>
-        </div>
+      </div>
+      <div className="sticky bottom-0 -mx-5 -mb-4 mt-4 flex items-center justify-end gap-2 border-t border-rose-50 dark:border-slate-800 px-5 py-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur">
+        <Button variant="secondary" onClick={onClose}>Abbrechen</Button>
+        <Button onClick={handleSubmit} disabled={!form.name.trim()}>
+          {initialData ? 'Speichern' : 'Erstellen'}
+        </Button>
       </div>
     </Modal>
   )

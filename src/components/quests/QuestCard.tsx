@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import type { QuestNode, QuestStatus } from '@/types'
 import { useGoalStore } from '@/store/useGoalStore'
 import { RelatedNotes } from '@/components/notes/RelatedNotes'
+import { getRichTextPreview } from '@/lib/richText'
 
 const statusConfig: Record<QuestStatus, { label: string; variant: 'gray' | 'amber' | 'green' }> = {
   open:          { label: 'Offen',       variant: 'gray'  },
@@ -39,6 +40,7 @@ export function QuestCard({
   const status   = statusConfig[quest.status]
   const isLocked = !isUnlocked && quest.status === 'open'
   const goal     = isGoal(quest.id)
+  const descriptionPreview = getRichTextPreview(quest.description, 140)
 
   const nextStatus: QuestStatus =
     quest.status === 'open' ? 'in-progress' :
@@ -80,8 +82,8 @@ export function QuestCard({
             {goal && <Target size={11} className="text-pink-400" />}
           </div>
 
-          {quest.description && (
-            <p className="mt-1 text-xs text-gray-500 line-clamp-2">{quest.description}</p>
+          {descriptionPreview && (
+            <p className="mt-1 text-xs text-gray-500 line-clamp-2">{descriptionPreview}</p>
           )}
 
           <div className="mt-2 flex flex-wrap gap-1.5">

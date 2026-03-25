@@ -3,30 +3,38 @@
 import { useState } from 'react'
 import { Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { RichTextViewer } from '@/components/ui/RichTextViewer'
 import { NoteImage } from './NoteImage'
 import type { NoteNode } from '@/types/note'
-import type { AnyNode } from '@/types'
-import { getNodeTitle } from '@/types'
+import { getNodeTitle, type LinkableNode } from '@/types'
+import { getRichTextPreview } from '@/lib/richText'
 
 const nodeEmoji: Record<string, string> = {
   quest: '📋',
   item: '📦',
   building: '🏗️',
+  note: '📝',
 }
 
 interface NoteCardProps {
   note: NoteNode
-  allNodes: AnyNode[]
+  linkableNodes: LinkableNode[]
+  notes: NoteNode[]
   onEdit:   (note: NoteNode) => void
   onDelete: (id: string) => void
 }
 
-export function NoteCard({ note, allNodes, onEdit, onDelete }: NoteCardProps) {
+export function NoteCard({ note, linkableNodes, notes, onEdit, onDelete }: NoteCardProps) {
   const [expanded, setExpanded] = useState(false)
 
-  const linkedNodes = note.linkedNodeIds
-    .map(id => allNodes.find(n => n.id === id))
-    .filter((n): n is AnyNode => !!n)
+  const linkedNodes = note.links
+    .map(link => linkableNodes.find(n => n.id === link.targetId))
+    .filter((n): n is LinkableNode => !!n)
+
+  const backlinks = notes
+    .filter(n => n.id !== note.id && n.links.some(link => link.targetId === note.id))
+
+  const preview = getRichTextPreview(note.content, 180)
 
   const date = new Date(note.updatedAt).toLocaleDateString('de-DE', {
     day: '2-digit', month: '2-digit', year: '2-digit',
@@ -57,10 +65,13 @@ export function NoteCard({ note, allNodes, onEdit, onDelete }: NoteCardProps) {
       </div>
 
       {/* Content preview / full */}
-      {note.content && (
-        <p className={`mt-2 text-xs text-gray-600 dark:text-slate-400 whitespace-pre-wrap ${expanded ? '' : 'line-clamp-3'}`}>
-          {note.content}
-        </p>
+      {preview && !expanded && (
+        <p className="mt-2 text-xs text-gray-600 dark:text-slate-400 line-clamp-3">{preview}</p>
+      )}
+      {expanded && note.content && (
+        <div className="mt-3">
+          <RichTextViewer value={note.content} />
+        </div>
       )}
 
       {/* Images (only when expanded or if few) */}
@@ -90,16 +101,36 @@ export function NoteCard({ note, allNodes, onEdit, onDelete }: NoteCardProps) {
 
       {/* Linked nodes */}
       {linkedNodes.length > 0 && (
-        <div className="mt-2.5 flex flex-wrap gap-1">
-          {linkedNodes.map(node => (
-            <span
-              key={node.id}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-rose-50 dark:bg-slate-700 text-gray-500 dark:text-slate-400"
-            >
-              <span>{nodeEmoji[node.type] ?? '🔗'}</span>
-              <span className="truncate max-w-24">{getNodeTitle(node)}</span>
-            </span>
-          ))}
+        <div className="mt-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500 mb-1">Verknüpft ({linkedNodes.length})</p>
+          <div className="flex flex-wrap gap-1.5">
+            {linkedNodes.map(node => (
+              <span
+                key={node.id}
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs bg-rose-50 dark:bg-slate-700 text-gray-600 dark:text-slate-300"
+              >
+                <span>{nodeEmoji[node.type] ?? '🔗'}</span>
+                <span className="truncate max-w-24">{getNodeTitle(node)}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Backlinks */}
+      {backlinks.length > 0 && (
+        <div className="mt-3 border-t border-rose-50 dark:border-slate-700 pt-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500 mb-1">Verlinkt von ({backlinks.length})</p>
+          <div className="flex flex-wrap gap-1.5">
+            {backlinks.map(bl => (
+              <span
+                key={bl.id}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-violet-50 dark:bg-slate-700 text-violet-600 dark:text-violet-300"
+              >
+                📝 {bl.title}
+              </span>
+            ))}
+          </div>
         </div>
       )}
 

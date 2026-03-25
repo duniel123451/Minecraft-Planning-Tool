@@ -8,6 +8,7 @@ import { BuildingImage } from '@/components/buildings/BuildingImage'
 import type { Building, BuildingRequirement, BuildingStatus } from '@/types'
 import { RelatedNotes } from '@/components/notes/RelatedNotes'
 import { useItemStore } from '@/store/useItemStore'
+import { RichTextViewer } from '@/components/ui/RichTextViewer'
 
 const statusConfig: Record<BuildingStatus, { label: string; variant: 'gray' | 'amber' | 'green' }> = {
   planned:     { label: 'Geplant',  variant: 'gray'  },
@@ -154,9 +155,9 @@ export function BuildingCard({ building, onEdit, onDelete, onStatusChange }: Bui
 
         {/* Notes */}
         {building.notes && (
-          <p className="mt-3 text-xs text-gray-400 italic border-t border-rose-50 pt-2">
-            {building.notes}
-          </p>
+          <div className="mt-3 border-t border-rose-50 pt-2">
+            <RichTextViewer value={building.notes} size="xs" />
+          </div>
         )}
 
         <RelatedNotes nodeId={building.id} />

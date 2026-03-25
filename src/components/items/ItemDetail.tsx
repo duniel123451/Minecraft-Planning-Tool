@@ -8,6 +8,7 @@ import { getNodeTitle } from '@/types'
 import { getFullDependencyTree } from '@/lib/progression'
 import { useGoalStore } from '@/store/useGoalStore'
 import { RelatedNotes } from '@/components/notes/RelatedNotes'
+import { RichTextViewer } from '@/components/ui/RichTextViewer'
 
 const statusConfig: Record<ItemStatus, { label: string; variant: 'red' | 'amber' | 'green'; emoji: string }> = {
   needed:     { label: 'Gesucht',      variant: 'red',   emoji: '🔍' },
@@ -94,13 +95,13 @@ export function ItemDetail({ item, allNodes, onClose, onEdit, onStatusChange, on
         {item.reason && (
           <div className="rounded-xl bg-rose-50 p-3">
             <p className="text-xs font-semibold text-rose-500 mb-1">🤔 Warum brauch ich das?</p>
-            <p className="text-sm text-gray-700">{item.reason}</p>
+            <RichTextViewer value={item.reason} />
           </div>
         )}
         {item.purpose && (
           <div className="rounded-xl bg-pink-50 p-3">
             <p className="text-xs font-semibold text-pink-500 mb-1">🎯 Wofür ist es?</p>
-            <p className="text-sm text-gray-700">{item.purpose}</p>
+            <RichTextViewer value={item.purpose} />
           </div>
         )}
 
@@ -187,7 +188,7 @@ export function ItemDetail({ item, allNodes, onClose, onEdit, onStatusChange, on
         {item.notes && (
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">📝 Notizen</p>
-            <p className="text-sm text-gray-600 whitespace-pre-wrap">{item.notes}</p>
+            <RichTextViewer value={item.notes} />
           </div>
         )}
 

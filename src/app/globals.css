@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "react-quill/dist/quill.snow.css";
 
 :root {
   --background: #fff1f2;
@@ -17,6 +18,62 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+.rich-text {
+  font-size: 0.9rem;
+}
+.rich-text p {
+  margin: 0 0 0.35rem 0;
+}
+.rich-text ul,
+.rich-text ol {
+  margin: 0.25rem 0 0.65rem 1.25rem;
+  padding: 0;
+}
+.rich-text li + li {
+  margin-top: 0.15rem;
+}
+.rich-text a {
+  color: #ec4899;
+  text-decoration: underline;
+}
+
+.rich-text-editor .ql-toolbar {
+  border: none;
+  border-bottom: 1px solid #fecdd3;
+  border-radius: 18px 18px 0 0;
+  background: #fff7fb;
+  padding: 8px 12px;
+}
+.rich-text-editor .ql-container {
+  border: none !important;
+  border-radius: 0 0 18px 18px;
+  min-height: 140px;
+}
+.rich-text-editor .ql-editor {
+  min-height: 120px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  padding: 14px;
+}
+.rich-text-editor .ql-toolbar button {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+.rich-text-editor .ql-toolbar button:hover,
+.rich-text-editor .ql-toolbar button.ql-active {
+  background: rgba(236, 72, 153, 0.1);
+}
+.rich-text-editor .ql-toolbar .ql-stroke {
+  stroke: #ec4899;
+}
+.rich-text-editor .ql-toolbar .ql-fill {
+  fill: #ec4899;
+}
+.rich-text-editor .ql-toolbar .ql-picker {
+  color: #ec4899;
 }
 
 /* Scrollbar styling */
@@ -97,6 +154,26 @@ html.dark select {
 html.dark input::placeholder,
 html.dark textarea::placeholder {
   color: #6e7681 !important;
+}
+
+html.dark .rich-text a {
+  color: #f472b6;
+}
+html.dark .rich-text-editor .ql-toolbar {
+  background: #1a1022;
+  border-color: #4a3060;
+}
+html.dark .rich-text-editor .ql-container {
+  background: #0f172a;
+}
+html.dark .rich-text-editor .ql-editor {
+  color: #e6edf3;
+}
+html.dark .rich-text-editor .ql-toolbar .ql-stroke {
+  stroke: #f9a8d4;
+}
+html.dark .rich-text-editor .ql-toolbar .ql-fill {
+  fill: #f9a8d4;
 }
 
 /* React Flow canvas */

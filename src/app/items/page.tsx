@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useDeleteNode } from '@/hooks/useDeleteNode'
 import type { ItemNode, ItemStatus, AnyNode } from '@/types'
+import { getRichTextPreview } from '@/lib/richText'
 
 type FilterStatus = 'all' | ItemStatus
 type ViewMode = 'grid' | 'list'
@@ -216,32 +217,35 @@ export default function ItemsPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {sorted.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() =>
-                    setSelectedItem((prev) => (prev?.id === item.id ? null : item))
-                  }
-                  className={`
-                    w-full bg-white rounded-xl border px-4 py-3 flex items-center gap-3
-                    hover:shadow-sm transition-all duration-150 text-left
-                    ${selectedItem?.id === item.id ? 'border-pink-300 ring-1 ring-pink-200' : 'border-rose-100'}
-                  `}
-                >
-                  <span className="text-lg">
-                    {item.status === 'needed' ? '🔍' : item.status === 'collecting' ? '📥' : '✅'}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium text-gray-800 ${item.status === 'have' ? 'line-through text-gray-400' : ''}`}>
-                      {item.name}
-                    </p>
-                    <p className="text-xs text-pink-400">{item.mod}</p>
-                  </div>
-                  {item.reason && (
-                    <p className="text-xs text-gray-400 truncate max-w-48 hidden sm:block">{item.reason}</p>
-                  )}
-                </button>
-              ))}
+              {sorted.map((item) => {
+                const reasonPreview = getRichTextPreview(item.reason, 80)
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() =>
+                      setSelectedItem((prev) => (prev?.id === item.id ? null : item))
+                    }
+                    className={`
+                      w-full bg-white rounded-xl border px-4 py-3 flex items-center gap-3
+                      hover:shadow-sm transition-all duration-150 text-left
+                      ${selectedItem?.id === item.id ? 'border-pink-300 ring-1 ring-pink-200' : 'border-rose-100'}
+                    `}
+                  >
+                    <span className="text-lg">
+                      {item.status === 'needed' ? '🔍' : item.status === 'collecting' ? '📥' : '✅'}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium text-gray-800 ${item.status === 'have' ? 'line-through text-gray-400' : ''}`}>
+                        {item.name}
+                      </p>
+                      <p className="text-xs text-pink-400">{item.mod}</p>
+                    </div>
+                    {reasonPreview && (
+                      <p className="text-xs text-gray-400 truncate max-w-48 hidden sm:block">{reasonPreview}</p>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>
@@ -269,6 +273,7 @@ export default function ItemsPage() {
 
       {/* Goal creation modal */}
       <GoalCreationModal
+        key={goalNode ? goalNode.id : 'closed'}
         open={goalNode !== null}
         onClose={() => setGoalNode(null)}
         node={goalNode}
@@ -277,6 +282,7 @@ export default function ItemsPage() {
 
       {/* Form */}
       <ItemForm
+        key={formOpen ? (editTarget?.id ?? 'new') : 'closed'}
         open={formOpen}
         onClose={handleFormClose}
         onSubmit={handleSubmit}

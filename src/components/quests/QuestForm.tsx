@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
-import { Input, Textarea, Select } from '@/components/ui/Input'
+import { Input, Select } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { RichTextEditor } from '@/components/ui/RichTextEditor'
 import type { QuestNode, QuestStatus, QuestPriority, QuestCategory, Dependency, AnyNode } from '@/types'
 import { getNodeTitle } from '@/types'
+import { normalizeRichTextInput, sanitizeRichText } from '@/lib/richText'
 
 interface QuestFormProps {
   open: boolean
@@ -28,24 +30,20 @@ const emptyForm = {
 }
 
 export function QuestForm({ open, onClose, onSubmit, initialData, allQuests, allItems }: QuestFormProps) {
-  const [form, setForm] = useState(emptyForm)
-
-  useEffect(() => {
-    if (initialData) {
-      setForm({
-        title:        initialData.title,
-        description:  initialData.description,
-        status:       initialData.status,
-        priority:     initialData.priority,
-        category:     initialData.category,
-        parentId:     initialData.parentId,
-        dependencies: [...initialData.dependencies],
-        notes:        initialData.notes,
-      })
-    } else {
-      setForm(emptyForm)
-    }
-  }, [initialData, open])
+  const [form, setForm] = useState(() =>
+    initialData
+      ? {
+          title:        initialData.title,
+          description:  normalizeRichTextInput(initialData.description),
+          status:       initialData.status,
+          priority:     initialData.priority,
+          category:     initialData.category,
+          parentId:     initialData.parentId,
+          dependencies: [...initialData.dependencies],
+          notes:        normalizeRichTextInput(initialData.notes),
+        }
+      : emptyForm
+  )
 
   const toggleDep = (targetId: string) => {
     setForm(p => {
@@ -61,7 +59,11 @@ export function QuestForm({ open, onClose, onSubmit, initialData, allQuests, all
 
   const handleSubmit = () => {
     if (!form.title.trim()) return
-    onSubmit(form)
+    onSubmit({
+      ...form,
+      description: sanitizeRichText(form.description),
+      notes:       sanitizeRichText(form.notes),
+    })
     onClose()
   }
 
@@ -73,7 +75,7 @@ export function QuestForm({ open, onClose, onSubmit, initialData, allQuests, all
 
   return (
     <Modal open={open} onClose={onClose} title={initialData ? 'Quest bearbeiten' : 'Neue Quest'}>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 pb-24">
         <Input
           label="Titel *"
           placeholder="z.B. ATM Star craften"
@@ -81,12 +83,11 @@ export function QuestForm({ open, onClose, onSubmit, initialData, allQuests, all
           onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
         />
 
-        <Textarea
+        <RichTextEditor
           label="Beschreibung"
           placeholder="Was muss gemacht werden?"
           value={form.description}
-          onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-          rows={2}
+          onChange={value => setForm(p => ({ ...p, description: value }))}
         />
 
         <div className="grid grid-cols-2 gap-3">
@@ -168,20 +169,19 @@ export function QuestForm({ open, onClose, onSubmit, initialData, allQuests, all
           </div>
         )}
 
-        <Textarea
+        <RichTextEditor
           label="Notizen"
           placeholder="Weitere Infos..."
           value={form.notes}
-          onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
-          rows={2}
+          onChange={value => setForm(p => ({ ...p, notes: value }))}
         />
 
-        <div className="flex justify-end gap-2 pt-1">
-          <Button variant="secondary" onClick={onClose}>Abbrechen</Button>
-          <Button onClick={handleSubmit} disabled={!form.title.trim()}>
-            {initialData ? 'Speichern' : 'Erstellen'}
-          </Button>
-        </div>
+      </div>
+      <div className="sticky bottom-0 -mx-5 -mb-4 mt-4 flex items-center justify-end gap-2 border-t border-rose-50 dark:border-slate-800 px-5 py-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur">
+        <Button variant="secondary" onClick={onClose}>Abbrechen</Button>
+        <Button onClick={handleSubmit} disabled={!form.title.trim()}>
+          {initialData ? 'Speichern' : 'Erstellen'}
+        </Button>
       </div>
     </Modal>
   )

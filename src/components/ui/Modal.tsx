@@ -21,38 +21,54 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-lg' }:
     return () => document.removeEventListener('keydown', handleKey)
   }, [open, onClose])
 
+  useEffect(() => {
+    if (!open) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [open])
+
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex flex-col justify-end md:justify-center md:items-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Dialog */}
       <div
         className={`
-          relative z-10 w-full ${maxWidth} max-h-[90vh] overflow-y-auto
-          rounded-2xl bg-white shadow-xl border border-rose-100
+          relative z-10 w-full ${maxWidth}
+          rounded-t-3xl md:rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-rose-100 dark:border-slate-700
+          max-h-[92vh] overflow-hidden flex flex-col
         `}
+        role="dialog"
+        aria-modal="true"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-rose-50 px-5 py-4">
-          <h2 className="text-base font-semibold text-gray-800">{title}</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="!p-1.5 rounded-lg"
-          >
-            <X size={16} />
-          </Button>
-        </div>
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-rose-50 dark:border-slate-800 px-5 py-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur">
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{title}</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="!p-1.5 rounded-lg"
+            >
+              <X size={16} />
+            </Button>
+          </div>
 
-        {/* Content */}
-        <div className="px-5 py-4">{children}</div>
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto px-5 py-4">
+            {children}
+          </div>
+        </div>
       </div>
     </div>
   )

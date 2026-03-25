@@ -1,14 +1,16 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { Plus, X, ImagePlus, Search, PackagePlus } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
-import { Input, Textarea, Select } from '@/components/ui/Input'
+import { Input, Select } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { RichTextEditor } from '@/components/ui/RichTextEditor'
 import { BuildingImage } from '@/components/buildings/BuildingImage'
 import { saveImage, deleteImage, isDataUrl } from '@/lib/imageStorage'
 import { useItemStore } from '@/store/useItemStore'
 import type { Building, BuildingRequirement, BuildingStatus } from '@/types'
+import { normalizeRichTextInput, sanitizeRichText } from '@/lib/richText'
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5 MB
 
@@ -32,8 +34,22 @@ const emptyForm = {
 export function BuildingForm({ open, onClose, onSubmit, initialData }: BuildingFormProps) {
   const allItems = useItemStore(s => s.items)
 
-  const [form, setForm]                   = useState(emptyForm)
-  const [itemRequirements, setItemReqs]   = useState<BuildingRequirement[]>([])
+  const [form, setForm]                   = useState(() =>
+    initialData
+      ? {
+          name:         initialData.name,
+          location:     initialData.location,
+          style:        initialData.style,
+          status:       initialData.status,
+          requirements: [...initialData.requirements],
+          inspoPics:    [...initialData.inspoPics],
+          notes:        normalizeRichTextInput(initialData.notes),
+        }
+      : emptyForm
+  )
+  const [itemRequirements, setItemReqs]   = useState<BuildingRequirement[]>(() =>
+    initialData?.itemRequirements ?? []
+  )
   const [itemSearch, setItemSearch]       = useState('')
   const [newReq, setNewReq]               = useState('')
   const [dragOver, setDragOver]           = useState(false)
@@ -47,33 +63,6 @@ export function BuildingForm({ open, onClose, onSubmit, initialData }: BuildingF
   const newKeysRef   = useRef<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (open) {
-      newKeysRef.current = []
-      setImageError(null)
-      setItemSearch('')
-      setShowInline(false)
-      setInlineName('')
-      setInlineMod('')
-      if (initialData) {
-        setForm({
-          name:         initialData.name,
-          location:     initialData.location,
-          style:        initialData.style,
-          status:       initialData.status,
-          requirements: [...initialData.requirements],
-          inspoPics:    [...initialData.inspoPics],
-          notes:        initialData.notes,
-        })
-        setItemReqs(initialData.itemRequirements ?? [])
-      } else {
-        setForm(emptyForm)
-        setItemReqs([])
-      }
-      setNewReq('')
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialData, open])
 
   // ── Freitext-Anforderungen ─────────────────────────────────────────────────
   const addRequirement = () => {
@@ -167,6 +156,7 @@ export function BuildingForm({ open, onClose, onSubmit, initialData }: BuildingF
     const itemDeps = itemRequirements.map(r => ({ targetId: r.itemId, type: 'requires' as const }))
     onSubmit({
       ...form,
+      notes:            sanitizeRichText(form.notes),
       type:             'building',
       itemRequirements,
       dependencies:     [...preservedDeps, ...itemDeps],
@@ -193,7 +183,7 @@ export function BuildingForm({ open, onClose, onSubmit, initialData }: BuildingF
       title={initialData ? 'Gebäude bearbeiten' : 'Neues Gebäude'}
       maxWidth="max-w-xl"
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 pb-24">
         <Input
           label="Name *"
           placeholder="z.B. Main Base"
@@ -423,20 +413,19 @@ export function BuildingForm({ open, onClose, onSubmit, initialData }: BuildingF
           )}
         </div>
 
-        <Textarea
+        <RichTextEditor
           label="Notizen"
           placeholder="Inspo, Ideen, Links..."
           value={form.notes}
-          onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
-          rows={3}
+          onChange={value => setForm(p => ({ ...p, notes: value }))}
         />
 
-        <div className="flex justify-end gap-2 pt-1">
-          <Button variant="secondary" onClick={handleClose}>Abbrechen</Button>
-          <Button onClick={handleSubmit} disabled={!form.name.trim()}>
-            {initialData ? 'Speichern' : 'Erstellen'}
-          </Button>
-        </div>
+      </div>
+      <div className="sticky bottom-0 -mx-5 -mb-4 mt-4 flex items-center justify-end gap-2 border-t border-rose-50 dark:border-slate-800 px-5 py-3 bg-white/90 dark:bg-slate-900/90 backdrop-blur">
+        <Button variant="secondary" onClick={handleClose}>Abbrechen</Button>
+        <Button onClick={handleSubmit} disabled={!form.name.trim()}>
+          {initialData ? 'Speichern' : 'Erstellen'}
+        </Button>
       </div>
     </Modal>
   )

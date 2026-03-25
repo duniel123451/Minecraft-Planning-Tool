@@ -20,6 +20,7 @@ import { getNodeState, getBlockedDependencies, getDependencyChain } from '@/lib/
 import { getRequiredNodesForGoal, getNextStepsForGoal, getBlockingNodesForGoal } from '@/lib/planning'
 import { Badge }   from '@/components/ui/Badge'
 import { Button }  from '@/components/ui/Button'
+import { RichTextViewer } from '@/components/ui/RichTextViewer'
 
 type StatusFilter = 'all' | 'done' | 'available' | 'locked'
 
@@ -412,20 +413,20 @@ export default function GraphPage() {
             <div className="flex-1 px-4 py-3 flex flex-col gap-4 text-xs">
               {/* Description / reason */}
               {selectedNode.type === 'quest' && selectedNode.description && (
-                <p className="text-gray-600">{selectedNode.description}</p>
+                <RichTextViewer value={selectedNode.description} />
               )}
               {selectedNode.type === 'item' && (
                 <>
                   {selectedNode.reason && (
                     <div className="rounded-xl bg-rose-50 p-2.5">
                       <p className="font-semibold text-rose-500 mb-1">🤔 Warum?</p>
-                      <p className="text-gray-600">{selectedNode.reason}</p>
+                      <RichTextViewer value={selectedNode.reason} />
                     </div>
                   )}
                   {selectedNode.purpose && (
                     <div className="rounded-xl bg-pink-50 p-2.5">
                       <p className="font-semibold text-pink-500 mb-1">🎯 Wofür?</p>
-                      <p className="text-gray-600">{selectedNode.purpose}</p>
+                      <RichTextViewer value={selectedNode.purpose} />
                     </div>
                   )}
                 </>
