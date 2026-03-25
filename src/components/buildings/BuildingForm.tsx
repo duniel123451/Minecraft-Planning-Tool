@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Plus, X, ImagePlus, Search, PackagePlus } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
-import { Input, Textarea, Select } from '@/components/ui/Input'
+import { Input, Select } from '@/components/ui/Input'
+import { RichTextEditor } from '@/components/ui/RichTextEditor'
 import { Button } from '@/components/ui/Button'
 import { BuildingImage } from '@/components/buildings/BuildingImage'
 import { saveImage, deleteImage, isDataUrl } from '@/lib/imageStorage'
@@ -423,13 +424,15 @@ export function BuildingForm({ open, onClose, onSubmit, initialData }: BuildingF
           )}
         </div>
 
-        <Textarea
-          label="Notizen"
-          placeholder="Inspo, Ideen, Links..."
-          value={form.notes}
-          onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
-          rows={3}
-        />
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Notizen</label>
+          <RichTextEditor
+            value={form.notes}
+            onChange={html => setForm(p => ({ ...p, notes: html }))}
+            placeholder="Inspo, Ideen, Links..."
+            minHeight={88}
+          />
+        </div>
 
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="secondary" onClick={handleClose}>Abbrechen</Button>

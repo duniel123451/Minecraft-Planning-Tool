@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/Modal'
-import { Input, Textarea, Select } from '@/components/ui/Input'
+import { Input, Select } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
+import { RichTextEditor } from '@/components/ui/RichTextEditor'
 import type { QuestNode, QuestStatus, QuestPriority, QuestCategory, Dependency, AnyNode } from '@/types'
 import { getNodeTitle } from '@/types'
 
@@ -81,13 +82,15 @@ export function QuestForm({ open, onClose, onSubmit, initialData, allQuests, all
           onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
         />
 
-        <Textarea
-          label="Beschreibung"
-          placeholder="Was muss gemacht werden?"
-          value={form.description}
-          onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-          rows={2}
-        />
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Beschreibung</label>
+          <RichTextEditor
+            value={form.description}
+            onChange={html => setForm(p => ({ ...p, description: html }))}
+            placeholder="Was muss gemacht werden?"
+            minHeight={72}
+          />
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <Select
@@ -168,13 +171,15 @@ export function QuestForm({ open, onClose, onSubmit, initialData, allQuests, all
           </div>
         )}
 
-        <Textarea
-          label="Notizen"
-          placeholder="Weitere Infos..."
-          value={form.notes}
-          onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
-          rows={2}
-        />
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Notizen</label>
+          <RichTextEditor
+            value={form.notes}
+            onChange={html => setForm(p => ({ ...p, notes: html }))}
+            placeholder="Weitere Infos..."
+            minHeight={72}
+          />
+        </div>
 
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="secondary" onClick={onClose}>Abbrechen</Button>
