@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { BuildingImage } from '@/components/buildings/BuildingImage'
 import type { Building, BuildingStatus } from '@/types'
+import { RelatedNotes } from '@/components/notes/RelatedNotes'
 
 const statusConfig: Record<BuildingStatus, { label: string; variant: 'gray' | 'amber' | 'green' }> = {
   planned:     { label: 'Geplant',  variant: 'gray'  },
@@ -117,6 +118,8 @@ export function BuildingCard({ building, onEdit, onDelete, onStatusChange }: Bui
             {building.notes}
           </p>
         )}
+
+        <RelatedNotes nodeId={building.id} />
       </div>
 
       {/* Lightbox */}

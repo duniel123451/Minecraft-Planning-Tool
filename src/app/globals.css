@@ -101,6 +101,14 @@ html.dark .react-flow {
   background-color: #0d1117 !important;
 }
 
+/* React Flow minimap */
+html.dark .react-flow__minimap {
+  background-color: #1e2430 !important;
+}
+html.dark .react-flow__minimap-mask {
+  fill: rgba(13, 17, 23, 0.75) !important;
+}
+
 /* Scrollbar */
 html.dark ::-webkit-scrollbar-thumb       { background: #3a2848; }
 html.dark ::-webkit-scrollbar-thumb:hover { background: #4a3060; }
