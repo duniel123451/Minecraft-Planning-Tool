@@ -177,6 +177,7 @@ export default function NotesPage() {
               key={note.id}
               note={note}
               allNodes={allNodes}
+              allNotes={notes}
               onEdit={handleEdit}
               onDelete={setDeleteId}
             />
@@ -191,6 +192,7 @@ export default function NotesPage() {
         onSubmit={handleSubmit}
         initialData={editTarget}
         allNodes={allNodes}
+        allNotes={notes}
       />
 
       <ConfirmDialog

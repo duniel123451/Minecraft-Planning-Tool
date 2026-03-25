@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { ImagePlus, X, Plus, Search } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
+import { RichTextEditor } from '@/components/ui/RichTextEditor'
 import { NoteImage } from './NoteImage'
 import { saveImage, deleteImages, isDataUrl } from '@/lib/imageStorage'
 import type { NoteNode } from '@/types/note'
@@ -29,9 +30,10 @@ const emptyForm: NoteFormState = {
 }
 
 const nodeEmoji: Record<string, string> = {
-  quest: '📋',
-  item: '📦',
+  quest:    '📋',
+  item:     '📦',
   building: '🏗️',
+  note:     '📝',
 }
 
 interface NoteFormProps {
@@ -40,9 +42,10 @@ interface NoteFormProps {
   onSubmit:     (data: Omit<NoteNode, 'id' | 'createdAt' | 'updatedAt'>) => void
   initialData?: NoteNode | null
   allNodes:     AnyNode[]
+  allNotes?:    NoteNode[]
 }
 
-export function NoteForm({ open, onClose, onSubmit, initialData, allNodes }: NoteFormProps) {
+export function NoteForm({ open, onClose, onSubmit, initialData, allNodes, allNotes = [] }: NoteFormProps) {
   const [form, setForm]             = useState<NoteFormState>(() =>
     initialData
       ? { title: initialData.title, content: initialData.content, images: [...initialData.images], tags: [...initialData.tags], linkedNodeIds: [...initialData.linkedNodeIds] }
@@ -125,10 +128,19 @@ export function NoteForm({ open, onClose, onSubmit, initialData, allNodes }: Not
     onClose()
   }
 
-  const filteredNodes = allNodes.filter(n => {
-    if (!nodeSearch) return true
-    return getNodeTitle(n).toLowerCase().includes(nodeSearch.toLowerCase())
-  })
+  // Combine AnyNodes + other notes (excluding self) for link list
+  const selfId = initialData?.id
+  const linkableNotes = allNotes.filter(n => n.id !== selfId)
+
+  type LinkEntry = { id: string; label: string; typeKey: string }
+  const filteredLinks: LinkEntry[] = [
+    ...allNodes
+      .filter(n => !nodeSearch || getNodeTitle(n).toLowerCase().includes(nodeSearch.toLowerCase()))
+      .map(n => ({ id: n.id, label: getNodeTitle(n), typeKey: n.type })),
+    ...linkableNotes
+      .filter(n => !nodeSearch || n.title.toLowerCase().includes(nodeSearch.toLowerCase()))
+      .map(n => ({ id: n.id, label: n.title, typeKey: 'note' })),
+  ]
 
   return (
     <Modal
@@ -154,12 +166,11 @@ export function NoteForm({ open, onClose, onSubmit, initialData, allNodes }: Not
         {/* Content */}
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Inhalt / Notizen</label>
-          <textarea
-            className="w-full rounded-xl border border-rose-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-gray-800 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 outline-none resize-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100 dark:focus:ring-pink-900 transition-colors"
-            placeholder="Was hast du gelernt? Notizen, Crafting-Tipps, YouTube-Links..."
-            rows={5}
+          <RichTextEditor
             value={form.content}
-            onChange={e => setForm(p => ({ ...p, content: e.target.value }))}
+            onChange={html => setForm(p => ({ ...p, content: html }))}
+            placeholder="Was hast du gelernt? Notizen, Crafting-Tipps, YouTube-Links..."
+            minHeight={120}
           />
         </div>
 
@@ -246,33 +257,37 @@ export function NoteForm({ open, onClose, onSubmit, initialData, allNodes }: Not
             <Search size={13} className="text-gray-400 dark:text-slate-500 flex-shrink-0" />
             <input
               className="flex-1 text-sm outline-none placeholder-gray-400 dark:placeholder-slate-500 bg-transparent text-gray-800 dark:text-slate-100"
-              placeholder="Items, Buildings, Quests suchen..."
+              placeholder="Items, Buildings, Quests, Notizen suchen..."
               value={nodeSearch}
               onChange={e => setNodeSearch(e.target.value)}
             />
           </div>
           <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5 rounded-xl border border-rose-100 dark:border-slate-700 p-1">
-            {filteredNodes.length === 0 ? (
+            {filteredLinks.length === 0 ? (
               <p className="text-xs text-gray-400 dark:text-slate-500 px-2 py-2 text-center">Keine Einträge gefunden</p>
             ) : (
-              filteredNodes.map(node => {
-                const selected = form.linkedNodeIds.includes(node.id)
+              filteredLinks.map(entry => {
+                const selected = form.linkedNodeIds.includes(entry.id)
+                const typeLabel = entry.typeKey === 'note' ? 'Notiz'
+                  : entry.typeKey === 'quest' ? 'Quest'
+                  : entry.typeKey === 'item' ? 'Item'
+                  : 'Gebäude'
                 return (
                   <button
-                    key={node.id}
-                    onClick={() => toggleNode(node.id)}
-                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-colors text-sm ${
+                    key={entry.id}
+                    onClick={() => toggleNode(entry.id)}
+                    className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-colors text-sm min-h-[40px] ${
                       selected
                         ? 'bg-pink-50 dark:bg-pink-950 text-pink-600 dark:text-pink-400'
                         : 'hover:bg-rose-50 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-300'
                     }`}
                   >
-                    <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${selected ? 'bg-pink-400 border-pink-400 text-white' : 'border-gray-300 dark:border-slate-500'}`}>
+                    <span className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${selected ? 'bg-pink-400 border-pink-400 text-white' : 'border-gray-300 dark:border-slate-500'}`}>
                       {selected && <span className="text-xs leading-none">✓</span>}
                     </span>
-                    <span>{nodeEmoji[node.type] ?? '🔗'}</span>
-                    <span className="flex-1 truncate">{getNodeTitle(node)}</span>
-                    <span className="text-xs text-gray-400 dark:text-slate-500 capitalize">{node.type}</span>
+                    <span>{nodeEmoji[entry.typeKey] ?? '🔗'}</span>
+                    <span className="flex-1 truncate">{entry.label}</span>
+                    <span className="text-xs text-gray-400 dark:text-slate-500">{typeLabel}</span>
                   </button>
                 )
               })
