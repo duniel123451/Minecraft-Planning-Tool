@@ -94,6 +94,10 @@ export function convertNodesToGraph(
         }
       }
 
+      const edgeColor  = isOnPath ? '#ec4899' : depColor
+      const isRelated  = dep.type === 'related'
+      const isRequires = dep.type === 'requires'
+
       // Mini-card colours matching the node style (bg = *-50, border = *-300)
       const labelBg     = edgeLabelColor === '#34d399' ? '#ecfdf5'   // emerald-50
                         : edgeLabelColor === '#f87171' ? '#fff1f2'   // rose-50
@@ -103,24 +107,26 @@ export function convertNodesToGraph(
                         : '#d1d5db'                                  // gray-300
 
       edges.push({
-        id:     `${dep.targetId}→${node.id}:${dep.type}`,
-        source: dep.targetId,
-        target: node.id,
+        id:       `${dep.targetId}→${node.id}:${dep.type}`,
+        source:   dep.targetId,
+        target:   node.id,
         // Use the custom HTML edge type whenever there's a label so the
         // label box can be styled with real CSS (not SVG fill attributes).
-        type:     edgeLabel ? 'custom' : 'smoothstep',
-        animated: dep.type === 'requires' && !isDone,
+        type:     edgeLabel ? 'custom' : (isRelated ? 'straight' : 'smoothstep'),
+        animated: isRequires && !isDone && !isOnPath,
         data:     edgeLabel ? { labelText: edgeLabel, labelBg, labelBorder, labelColor: edgeLabelColor } : undefined,
+        zIndex:   isOnPath ? 10 : isRequires ? 5 : 1,
         style: {
-          stroke:          isOnPath ? '#ec4899' : depColor,
-          strokeWidth:     isOnPath ? 3 : dep.type === 'requires' ? 2 : 1,
-          strokeDasharray: dep.type === 'related' ? '4 3' : undefined,
+          stroke:          edgeColor,
+          strokeWidth:     isOnPath ? 3 : isRequires ? 2 : 1.5,
+          strokeDasharray: isRelated ? '5 4' : undefined,
+          opacity:         isRelated ? 0.55 : 1,
         },
         markerEnd: {
           type:   'arrowclosed',
-          color:  isOnPath ? '#ec4899' : depColor,
-          width:  16,
-          height: 16,
+          color:  edgeColor,
+          width:  isOnPath ? 18 : 14,
+          height: isOnPath ? 18 : 14,
         },
       })
     })
