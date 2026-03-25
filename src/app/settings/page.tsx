@@ -1,7 +1,8 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Download, Upload, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Download, Upload, AlertTriangle, CheckCircle2, Moon, Sun } from 'lucide-react'
+import { useDarkMode } from '@/lib/useDarkMode'
 import { useQuestStore }    from '@/store/useQuestStore'
 import { useItemStore }     from '@/store/useItemStore'
 import { useBuildingStore } from '@/store/useBuildingStore'
@@ -50,6 +51,7 @@ function isValidBackup(value: unknown): value is BackupData {
 
 export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { dark, toggle: toggleDark } = useDarkMode()
 
   const [importError,   setImportError]   = useState<string | null>(null)
   const [importSuccess, setImportSuccess] = useState(false)
@@ -128,6 +130,43 @@ export default function SettingsPage() {
       <div className="mb-6">
         <h1 className="text-xl font-bold text-gray-800">⚙️ Einstellungen</h1>
         <p className="text-xs text-gray-400 mt-0.5">Datensicherung & Import</p>
+      </div>
+
+      {/* Dark Mode */}
+      <div className="bg-white rounded-2xl border border-rose-100 shadow-sm overflow-hidden mb-4">
+        <div className="px-5 py-4 border-b border-rose-50">
+          <h2 className="text-sm font-semibold text-gray-700">🎨 Darstellung</h2>
+        </div>
+        <div className="px-5 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Dark Mode</p>
+              <p className="text-xs text-gray-400 mt-0.5">Dunkles Design aktivieren</p>
+            </div>
+            <button
+              onClick={toggleDark}
+              aria-label={dark ? 'Dark Mode deaktivieren' : 'Dark Mode aktivieren'}
+              className={`
+                relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200
+                focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2
+                ${dark ? 'bg-pink-400 border-pink-400' : 'bg-gray-200 border-gray-200'}
+              `}
+            >
+              <span
+                className={`
+                  pointer-events-none inline-flex h-full aspect-square items-center justify-center rounded-full bg-white shadow-sm
+                  transition-transform duration-200
+                  ${dark ? 'translate-x-5' : 'translate-x-0'}
+                `}
+              >
+                {dark
+                  ? <Moon size={10} className="text-pink-400" />
+                  : <Sun  size={10} className="text-gray-400" />
+                }
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-rose-100 shadow-sm overflow-hidden">

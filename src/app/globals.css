@@ -34,3 +34,71 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #fda4af;
 }
+
+/* ── Dark Mode ─────────────────────────────────────────────────────────── */
+
+/* Class-based dark mode variant for Tailwind's dark: prefix */
+@variant dark (&:is(.dark, .dark *));
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0d1117;
+  color: #e6edf3;
+}
+
+/* Backgrounds */
+html.dark .bg-white       { background-color: #161b22; }
+html.dark .bg-rose-50     { background-color: #18131f; }
+html.dark .bg-rose-100    { background-color: #21182c; }
+html.dark .bg-gray-50     { background-color: #1c2128; }
+html.dark .bg-gray-100    { background-color: #21262d; }
+html.dark .bg-pink-50     { background-color: #1f0d17; }
+html.dark .bg-amber-50    { background-color: #1f180a; }
+html.dark .bg-red-50      { background-color: #1f0d0d; }
+html.dark .bg-emerald-50  { background-color: #0a1f12; }
+html.dark .bg-purple-50   { background-color: #130d1f; }
+html.dark .bg-violet-50   { background-color: #120d1f; }
+html.dark .bg-blue-50     { background-color: #0d1525; }
+
+/* Borders */
+html.dark .border-rose-50   { border-color: #2d2038; }
+html.dark .border-rose-100  { border-color: #3a2848; }
+html.dark .border-rose-200  { border-color: #4a3060; }
+html.dark .border-gray-200  { border-color: #30363d; }
+html.dark .border-amber-100 { border-color: #3d3020; }
+html.dark .border-red-100   { border-color: #3d1a1a; }
+html.dark .border-emerald-100 { border-color: #1a3a26; }
+
+/* Text */
+html.dark .text-gray-800 { color: #e6edf3; }
+html.dark .text-gray-700 { color: #cdd9e5; }
+html.dark .text-gray-600 { color: #8b949e; }
+html.dark .text-gray-500 { color: #8b949e; }
+html.dark .text-gray-400 { color: #6e7681; }
+html.dark .text-gray-300 { color: #484f58; }
+
+/* Form inputs */
+html.dark input:not([type='file']):not([type='checkbox']):not([type='radio']),
+html.dark textarea,
+html.dark select {
+  background-color: #21262d;
+  color: #e6edf3;
+  border-color: #3a2848;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #6e7681;
+}
+
+/* React Flow canvas */
+html.dark .react-flow {
+  background-color: #0d1117;
+}
+
+/* Scrollbar in dark mode */
+html.dark ::-webkit-scrollbar-thumb { background: #3a2848; }
+html.dark ::-webkit-scrollbar-thumb:hover { background: #4a3060; }

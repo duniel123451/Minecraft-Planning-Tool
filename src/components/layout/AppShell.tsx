@@ -16,6 +16,11 @@ export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
+    // 0. Restore dark mode before paint to prevent flash
+    if (localStorage.getItem('atm10-dark-mode') === 'true') {
+      document.documentElement.classList.add('dark')
+    }
+
     // 1. Rehydrate from localStorage
     useQuestStore.persist.rehydrate()
     useBuildingStore.persist.rehydrate()
