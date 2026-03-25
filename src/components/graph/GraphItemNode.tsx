@@ -31,12 +31,25 @@ export const GraphItemNode = memo(({ data }: NodeProps<Node<GraphNodeData>>) => 
   return (
     <div
       className={`
-        w-52 rounded-2xl border-2 px-3 py-2.5 shadow-sm select-none relative
+        relative w-52 rounded-2xl border-2 px-3 py-2.5 shadow-sm select-none
         ${h ? `${h.bg} ${h.border} ${h.ring}` : `${s.bg} ${s.border}`}
       `}
     >
-      <Handle type="target" position={Position.Left}  style={{ background: '#c4b5fd', border: 'none', width: 8, height: 8 }} />
-      <Handle type="source" position={Position.Right} style={{ background: '#c4b5fd', border: 'none', width: 8, height: 8 }} />
+      {/* Invisible full-node target handle — lets the user drop anywhere on the node */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="body"
+        style={{
+          position: 'absolute', inset: 0,
+          width: '100%', height: '100%',
+          transform: 'none', borderRadius: '14px',
+          background: 'transparent', border: 'none',
+          opacity: 0, zIndex: 0, pointerEvents: 'none',
+        }}
+      />
+      <Handle type="target" position={Position.Left}  style={{ background: '#c4b5fd', border: '2px solid #a78bfa', width: 12, height: 12, cursor: 'crosshair' }} />
+      <Handle type="source" position={Position.Right} style={{ background: '#c4b5fd', border: '2px solid #a78bfa', width: 12, height: 12, cursor: 'crosshair' }} />
 
       {data.highlight === 'goal' && (
         <div className="absolute -top-2 -right-2 text-xs bg-pink-400 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-sm">

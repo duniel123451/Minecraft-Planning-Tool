@@ -33,12 +33,25 @@ export const GraphQuestNode = memo(({ data }: NodeProps<Node<GraphNodeData>>) =>
   return (
     <div
       className={`
-        w-52 rounded-2xl border-2 px-3 py-2.5 shadow-sm select-none
+        relative w-52 rounded-2xl border-2 px-3 py-2.5 shadow-sm select-none
         ${h ? `${h.bg} ${h.border} ${h.ring}` : `${s.bg} ${s.border}`}
       `}
     >
-      <Handle type="target" position={Position.Left}  style={{ background: '#fda4af', border: 'none', width: 8, height: 8 }} />
-      <Handle type="source" position={Position.Right} style={{ background: '#fda4af', border: 'none', width: 8, height: 8 }} />
+      {/* Invisible full-node target handle — lets the user drop anywhere on the node */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="body"
+        style={{
+          position: 'absolute', inset: 0,
+          width: '100%', height: '100%',
+          transform: 'none', borderRadius: '14px',
+          background: 'transparent', border: 'none',
+          opacity: 0, zIndex: 0, pointerEvents: 'none',
+        }}
+      />
+      <Handle type="target" position={Position.Left}  style={{ background: '#fda4af', border: '2px solid #fb7185', width: 12, height: 12, cursor: 'crosshair' }} />
+      <Handle type="source" position={Position.Right} style={{ background: '#fda4af', border: '2px solid #fb7185', width: 12, height: 12, cursor: 'crosshair' }} />
 
       {/* Goal badge */}
       {data.highlight === 'goal' && (

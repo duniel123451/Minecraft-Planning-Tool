@@ -16,6 +16,11 @@ export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
+    // 0. Restore dark mode before paint to prevent flash
+    if (localStorage.getItem('atm10-dark-mode') === 'true') {
+      document.documentElement.classList.add('dark')
+    }
+
     // 1. Rehydrate from localStorage
     useQuestStore.persist.rehydrate()
     useBuildingStore.persist.rehydrate()
@@ -30,21 +35,21 @@ export function AppShell({ children }: AppShellProps) {
   }, [])
 
   return (
-    <div className="min-h-screen bg-rose-50 flex">
+    <div className="min-h-screen bg-rose-50 dark:bg-slate-950 flex">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile top bar */}
-        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-rose-100">
+        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border-b border-rose-100 dark:border-slate-700">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-1.5 rounded-lg hover:bg-rose-50 text-gray-600 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-slate-800 text-gray-600 dark:text-slate-300 transition-colors"
           >
             <Menu size={20} />
           </button>
           <div className="flex items-center gap-2">
             <span className="text-lg">⛏️</span>
-            <span className="font-bold text-sm text-gray-800">ATM10 Tracker</span>
+            <span className="font-bold text-sm text-gray-800 dark:text-slate-100">ATM10 Tracker</span>
           </div>
         </header>
 
