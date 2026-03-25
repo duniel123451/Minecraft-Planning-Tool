@@ -24,9 +24,10 @@ import { Button }  from '@/components/ui/Button'
 type StatusFilter = 'all' | 'done' | 'available' | 'locked'
 
 export default function GraphPage() {
-  const quests    = useQuestStore(s => s.quests)
-  const items     = useItemStore(s => s.items)
-  const buildings = useBuildingStore(s => s.buildings)
+  const quests          = useQuestStore(s => s.quests)
+  const items           = useItemStore(s => s.items)
+  const buildings       = useBuildingStore(s => s.buildings)
+  const updateBuilding  = useBuildingStore(s => s.updateBuilding)
 
   const [showQuests,    setShowQuests]    = useState(true)
   const [showItems,     setShowItems]     = useState(true)
@@ -170,6 +171,11 @@ export default function GraphPage() {
   }, [allNodes, showEdgeError])
 
   // ─── Detail panel data ─────────────────────────────────────────────────────
+
+  // Live building data (reactive — reflects store updates without waiting for node re-click)
+  const liveBuilding = selectedNode?.type === 'building'
+    ? buildings.find(b => b.id === selectedNode.id) ?? null
+    : null
 
   const nodeState    = selectedNode ? getNodeState(selectedNode.id, allNodes) : null
   const blockedBy    = selectedNode ? getBlockedDependencies(selectedNode.id, allNodes) : []
@@ -432,6 +438,89 @@ export default function GraphPage() {
                       <p className="text-gray-600">{selectedNode.style}</p>
                     </div>
                   )}
+
+                  {/* Material requirements — editable inline */}
+                  {(() => {
+                    const reqs = (liveBuilding?.itemRequirements ?? [])
+                      .map(r => ({ ...r, item: items.find(i => i.id === r.itemId) }))
+                      .filter((x): x is typeof x & { item: NonNullable<typeof x.item> } => !!x.item)
+                    if (reqs.length === 0) return null
+                    const doneCount = reqs.filter(r => r.preparedAmount >= r.requiredAmount).length
+                    return (
+                      <div>
+                        <p className="font-semibold text-gray-500 mb-1.5">
+                          📦 Materialien
+                          <span className={`ml-1.5 text-xs font-normal ${doneCount === reqs.length ? 'text-emerald-500' : 'text-gray-400'}`}>
+                            ({doneCount}/{reqs.length} fertig)
+                          </span>
+                        </p>
+                        <div className="flex flex-col gap-2">
+                          {reqs.map(req => {
+                            const done = req.preparedAmount >= req.requiredAmount
+                            const pct  = req.requiredAmount > 0
+                              ? Math.min(100, Math.round((req.preparedAmount / req.requiredAmount) * 100))
+                              : 100
+                            const toggle = () => {
+                              const updated = (liveBuilding!.itemRequirements).map(r =>
+                                r.itemId === req.itemId
+                                  ? { ...r, preparedAmount: done ? 0 : r.requiredAmount }
+                                  : r
+                              )
+                              updateBuilding(selectedNode.id, { itemRequirements: updated })
+                            }
+                            const setPrepared = (val: number) => {
+                              const updated = (liveBuilding!.itemRequirements).map(r =>
+                                r.itemId === req.itemId
+                                  ? { ...r, preparedAmount: Math.max(0, isNaN(val) ? 0 : val) }
+                                  : r
+                              )
+                              updateBuilding(selectedNode.id, { itemRequirements: updated })
+                            }
+                            return (
+                              <div key={req.itemId}>
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  {/* Checkbox */}
+                                  <button
+                                    onClick={toggle}
+                                    className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                                      done
+                                        ? 'bg-emerald-400 border-emerald-400 text-white'
+                                        : 'border-gray-300 hover:border-pink-400'
+                                    }`}
+                                  >
+                                    {done && <span className="text-[10px] leading-none">✓</span>}
+                                  </button>
+                                  {/* Name */}
+                                  <span className={`flex-1 truncate text-xs ${done ? 'text-emerald-600 line-through opacity-60' : 'text-gray-700'}`}>
+                                    {req.item.name}
+                                  </span>
+                                  {/* Amount input */}
+                                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={req.preparedAmount || ''}
+                                      placeholder="0"
+                                      onChange={e => setPrepared(parseInt(e.target.value))}
+                                      className="w-9 rounded border border-rose-200 bg-white px-1 py-0.5 text-center text-xs outline-none focus:border-pink-400"
+                                    />
+                                    <span className="text-gray-400 text-xs">/{req.requiredAmount}</span>
+                                  </div>
+                                </div>
+                                <div className="h-1 rounded-full bg-rose-100/60 ml-5">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${done ? 'bg-emerald-400' : 'bg-pink-400'}`}
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })()}
+
                   {selectedNode.requirements.length > 0 && (
                     <div>
                       <p className="font-semibold text-gray-500 mb-1.5">📋 Anforderungen</p>

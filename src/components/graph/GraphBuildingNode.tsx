@@ -2,12 +2,13 @@
 
 import { memo } from 'react'
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react'
+import { useItemStore } from '@/store/useItemStore'
 import type { GraphNodeData } from '@/lib/graph/convert'
 
-const statusStyles: Record<string, { bg: string; border: string; text: string; dot: string }> = {
-  done:          { bg: 'bg-emerald-50',  border: 'border-emerald-300', text: 'text-emerald-700', dot: 'bg-emerald-400' },
-  'in-progress': { bg: 'bg-teal-50',    border: 'border-teal-300',    text: 'text-teal-700',    dot: 'bg-teal-400'    },
-  planned:       { bg: 'bg-cyan-50',    border: 'border-cyan-200',    text: 'text-cyan-600',    dot: 'bg-cyan-300'    },
+const statusStyles: Record<string, { bg: string; border: string; text: string; dot: string; divider: string }> = {
+  done:          { bg: 'bg-emerald-50',  border: 'border-emerald-300', text: 'text-emerald-700', dot: 'bg-emerald-400', divider: 'border-emerald-100' },
+  'in-progress': { bg: 'bg-teal-50',    border: 'border-teal-300',    text: 'text-teal-700',    dot: 'bg-teal-400',    divider: 'border-teal-100'    },
+  planned:       { bg: 'bg-cyan-50',    border: 'border-cyan-200',    text: 'text-cyan-600',    dot: 'bg-cyan-300',    divider: 'border-cyan-100'    },
 }
 
 export const GraphBuildingNode = memo(({ data }: NodeProps<Node<GraphNodeData>>) => {
@@ -15,6 +16,11 @@ export const GraphBuildingNode = memo(({ data }: NodeProps<Node<GraphNodeData>>)
 
   const building = data.node
   const s = statusStyles[building.status] ?? statusStyles.planned
+  const items = useItemStore(s => s.items)
+
+  const reqs = (building.itemRequirements ?? [])
+    .map(req => ({ ...req, item: items.find(i => i.id === req.itemId) }))
+    .filter((x): x is typeof x & { item: NonNullable<typeof x.item> } => !!x.item)
 
   return (
     <div className={`relative w-52 rounded-2xl border-2 px-3 py-2.5 shadow-sm select-none ${s.bg} ${s.border}`}>
@@ -48,6 +54,39 @@ export const GraphBuildingNode = memo(({ data }: NodeProps<Node<GraphNodeData>>)
 
       {building.location && (
         <div className="mt-1 text-xs text-gray-400 truncate">{building.location}</div>
+      )}
+
+      {/* Material requirements mini-list */}
+      {reqs.length > 0 && (
+        <div className={`mt-2 pt-2 border-t ${s.divider} flex flex-col gap-1.5`}>
+          {reqs.slice(0, 3).map(req => {
+            const done = req.preparedAmount >= req.requiredAmount
+            const pct  = req.requiredAmount > 0
+              ? Math.min(100, Math.round((req.preparedAmount / req.requiredAmount) * 100))
+              : 100
+            return (
+              <div key={req.itemId}>
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className={`truncate flex-1 text-[11px] ${done ? 'text-emerald-500' : 'text-gray-500'}`}>
+                    {req.item.name}
+                  </span>
+                  <span className={`ml-1.5 flex-shrink-0 text-[11px] font-medium tabular-nums ${done ? 'text-emerald-500' : 'text-gray-400'}`}>
+                    {done ? '✓' : `${req.preparedAmount}/${req.requiredAmount}`}
+                  </span>
+                </div>
+                <div className="h-0.5 rounded-full bg-black/10">
+                  <div
+                    className={`h-full rounded-full ${done ? 'bg-emerald-400' : 'bg-pink-400'}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            )
+          })}
+          {reqs.length > 3 && (
+            <p className={`text-[11px] ${s.text} opacity-60`}>+{reqs.length - 3} weitere</p>
+          )}
+        </div>
       )}
     </div>
   )

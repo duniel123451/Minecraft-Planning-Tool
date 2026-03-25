@@ -77,13 +77,26 @@ export function convertNodesToGraph(
           highlights.goalIds.has(dep.targetId))
       )
 
+      // For building→item edges, show preparedAmount/requiredAmount from itemRequirements
+      let edgeLabel: string | undefined
+      if (dep.amount && dep.type === 'requires') {
+        edgeLabel = `×${dep.amount}`
+      } else if (node.type === 'building' && dep.type === 'requires') {
+        const req = node.itemRequirements?.find(r => r.itemId === dep.targetId)
+        if (req) {
+          edgeLabel = req.preparedAmount >= req.requiredAmount
+            ? `✓ ${req.requiredAmount}`
+            : `${req.preparedAmount}/${req.requiredAmount}`
+        }
+      }
+
       edges.push({
         id:       `${dep.targetId}→${node.id}:${dep.type}`,
         source:   dep.targetId,
         target:   node.id,
         type:     'smoothstep',
         animated: dep.type === 'requires' && !isDone,
-        label:    dep.amount && dep.type === 'requires' ? `×${dep.amount}` : undefined,
+        label:    edgeLabel,
         labelStyle: { fontSize: 10, fill: '#9ca3af' },
         style: {
           stroke:          isOnPath ? '#ec4899' : depColor,
