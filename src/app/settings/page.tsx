@@ -1,15 +1,16 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Download, Upload, AlertTriangle, CheckCircle2, Moon, Sun } from 'lucide-react'
-import { useDarkMode } from '@/lib/useDarkMode'
-import { useQuestStore }    from '@/store/useQuestStore'
-import { useItemStore }     from '@/store/useItemStore'
-import { useBuildingStore } from '@/store/useBuildingStore'
-import { useGoalStore }     from '@/store/useGoalStore'
+import { Download, Upload, AlertTriangle, CheckCircle2, Moon, Sun, Trash2 } from 'lucide-react'
+import { useDarkMode }       from '@/lib/useDarkMode'
+import { deleteImages, isDataUrl } from '@/lib/imageStorage'
+import { useQuestStore }     from '@/store/useQuestStore'
+import { useItemStore }      from '@/store/useItemStore'
+import { useBuildingStore }  from '@/store/useBuildingStore'
+import { useGoalStore }      from '@/store/useGoalStore'
 import { useInventoryStore } from '@/store/useInventoryStore'
-import { Button }           from '@/components/ui/Button'
-import { ConfirmDialog }    from '@/components/ui/ConfirmDialog'
+import { Button }            from '@/components/ui/Button'
+import { ConfirmDialog }     from '@/components/ui/ConfirmDialog'
 import type { QuestNode, ItemNode, Building, Goal, InventoryItem } from '@/types'
 
 // ─── Backup schema ────────────────────────────────────────────────────────────
@@ -47,17 +48,30 @@ function isValidBackup(value: unknown): value is BackupData {
   )
 }
 
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+
+type Tab = 'appearance' | 'backup' | 'reset'
+
+const TABS: { id: Tab; label: string; emoji: string }[] = [
+  { id: 'appearance', label: 'Darstellung',  emoji: '🎨' },
+  { id: 'backup',     label: 'Datensicherung', emoji: '💾' },
+  { id: 'reset',      label: 'Zurücksetzen', emoji: '🗑️' },
+]
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef             = useRef<HTMLInputElement>(null)
   const { dark, toggle: toggleDark } = useDarkMode()
 
+  const [activeTab, setActiveTab]     = useState<Tab>('appearance')
   const [importError,   setImportError]   = useState<string | null>(null)
   const [importSuccess, setImportSuccess] = useState(false)
   const [pendingBackup, setPendingBackup] = useState<BackupData | null>(null)
+  const [showResetDialog, setShowResetDialog] = useState(false)
+  const [resetSuccess,    setResetSuccess]    = useState(false)
 
-  // ── Export ──────────────────────────────────────────────────────────────────
+  // ── Export ────────────────────────────────────────────────────────────────
 
   const handleExport = () => {
     const backup: BackupData = {
@@ -85,7 +99,7 @@ export default function SettingsPage() {
     URL.revokeObjectURL(url)
   }
 
-  // ── Import ──────────────────────────────────────────────────────────────────
+  // ── Import ────────────────────────────────────────────────────────────────
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -125,126 +139,238 @@ export default function SettingsPage() {
     setImportSuccess(true)
   }
 
+  // ── Reset ─────────────────────────────────────────────────────────────────
+
+  const handleResetConfirm = async () => {
+    // Collect IndexedDB image keys before wiping the building store
+    const imageKeys = useBuildingStore.getState().buildings
+      .flatMap(b => b.inspoPics.filter(p => !isDataUrl(p)))
+
+    // Wipe all stores
+    useQuestStore.setState({ quests: [], _dataVersion: 2, lastDeleted: null })
+    useItemStore.setState({ items: [], _dataVersion: 2, lastDeleted: null })
+    useBuildingStore.setState({ buildings: [], _dataVersion: 2 })
+    useGoalStore.setState({ goals: [], _dataVersion: 2 })
+    useInventoryStore.setState({ inventory: [] })
+
+    // Delete images from IndexedDB (fire-and-forget; errors are silently ignored)
+    if (imageKeys.length > 0) await deleteImages(imageKeys)
+
+    setShowResetDialog(false)
+    setResetSuccess(true)
+  }
+
+  // ─── Counts for the reset preview ─────────────────────────────────────────
+
+  const questCount    = useQuestStore(s => s.quests.length)
+  const itemCount     = useItemStore(s => s.items.length)
+  const buildingCount = useBuildingStore(s => s.buildings.length)
+  const goalCount     = useGoalStore(s => s.goals.length)
+
   return (
     <div className="px-4 py-6 max-w-2xl mx-auto lg:max-w-3xl lg:px-8">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-gray-800">⚙️ Einstellungen</h1>
-        <p className="text-xs text-gray-400 mt-0.5">Datensicherung & Import</p>
+        <p className="text-xs text-gray-400 mt-0.5">Darstellung, Datensicherung & Zurücksetzen</p>
       </div>
 
-      {/* Dark Mode */}
-      <div className="bg-white rounded-2xl border border-rose-100 shadow-sm overflow-hidden mb-4">
-        <div className="px-5 py-4 border-b border-rose-50">
-          <h2 className="text-sm font-semibold text-gray-700">🎨 Darstellung</h2>
-        </div>
-        <div className="px-5 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium text-gray-700">Dark Mode</p>
-              <p className="text-xs text-gray-400 mt-0.5">Dunkles Design aktivieren</p>
-            </div>
-            <button
-              onClick={toggleDark}
-              aria-label={dark ? 'Dark Mode deaktivieren' : 'Dark Mode aktivieren'}
-              className={`
-                relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200
-                focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2
-                ${dark ? 'bg-pink-400 border-pink-400' : 'bg-gray-200 border-gray-200'}
-              `}
-            >
-              <span
+      {/* Tab bar */}
+      <div className="flex gap-1 bg-rose-50 rounded-2xl p-1 mb-5">
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`
+              flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors
+              ${activeTab === tab.id
+                ? 'bg-white text-gray-800 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'}
+            `}
+          >
+            <span>{tab.emoji}</span>
+            <span>{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── Appearance tab ── */}
+      {activeTab === 'appearance' && (
+        <div className="bg-white rounded-2xl border border-rose-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-rose-50">
+            <h2 className="text-sm font-semibold text-gray-700">🎨 Darstellung</h2>
+          </div>
+          <div className="px-5 py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Dark Mode</p>
+                <p className="text-xs text-gray-400 mt-0.5">Dunkles Design aktivieren</p>
+              </div>
+              <button
+                onClick={toggleDark}
+                aria-label={dark ? 'Dark Mode deaktivieren' : 'Dark Mode aktivieren'}
                 className={`
-                  pointer-events-none inline-flex h-full aspect-square items-center justify-center rounded-full bg-white shadow-sm
-                  transition-transform duration-200
-                  ${dark ? 'translate-x-5' : 'translate-x-0'}
+                  relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200
+                  focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2
+                  ${dark ? 'bg-pink-400 border-pink-400' : 'bg-gray-200 border-gray-200'}
                 `}
               >
-                {dark
-                  ? <Moon size={10} className="text-pink-400" />
-                  : <Sun  size={10} className="text-gray-400" />
-                }
-              </span>
-            </button>
+                <span
+                  className={`
+                    pointer-events-none inline-flex h-full aspect-square items-center justify-center rounded-full bg-white shadow-sm
+                    transition-transform duration-200
+                    ${dark ? 'translate-x-5' : 'translate-x-0'}
+                  `}
+                >
+                  {dark
+                    ? <Moon size={10} className="text-pink-400" />
+                    : <Sun  size={10} className="text-gray-400" />
+                  }
+                </span>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="bg-white rounded-2xl border border-rose-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-rose-50">
-          <h2 className="text-sm font-semibold text-gray-700">💾 Datensicherung</h2>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Alle deine Daten werden nur lokal im Browser gespeichert. Exportiere regelmäßig ein Backup.
-          </p>
-        </div>
-
-        <div className="px-5 py-5 flex flex-col gap-6">
-
-          {/* Export */}
-          <div className="flex flex-col gap-3">
-            <div>
-              <p className="text-sm font-medium text-gray-700">Export</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Exportiert alle Quests, Items, Gebäude, Ziele und Inventar als JSON-Datei.
-              </p>
-            </div>
-            <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2 text-xs text-amber-700">
-              <span className="font-medium">Hinweis:</span> Gebäude-Bilder werden <strong>nicht</strong> exportiert —
-              sie sind im Browser-Speicher (IndexedDB) hinterlegt und bleiben auf diesem Gerät erhalten.
-              Nach einem Import auf einem anderen Gerät müssen Bilder erneut hochgeladen werden.
-            </div>
-            <Button onClick={handleExport} className="gap-2 self-start">
-              <Download size={14} />
-              Backup herunterladen
-            </Button>
+      {/* ── Backup tab ── */}
+      {activeTab === 'backup' && (
+        <div className="bg-white rounded-2xl border border-rose-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-rose-50">
+            <h2 className="text-sm font-semibold text-gray-700">💾 Datensicherung</h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Alle deine Daten werden nur lokal im Browser gespeichert. Exportiere regelmäßig ein Backup.
+            </p>
           </div>
 
-          <div className="border-t border-rose-50" />
+          <div className="px-5 py-5 flex flex-col gap-6">
 
-          {/* Import */}
-          <div className="flex flex-col gap-3">
-            <div>
-              <p className="text-sm font-medium text-gray-700">Import</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Stellt Daten aus einem zuvor exportierten Backup wieder her.
-              </p>
+            {/* Export */}
+            <div className="flex flex-col gap-3">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Export</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Exportiert alle Quests, Items, Gebäude, Ziele und Inventar als JSON-Datei.
+                </p>
+              </div>
+              <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2 text-xs text-amber-700">
+                <span className="font-medium">Hinweis:</span> Gebäude-Bilder werden <strong>nicht</strong> exportiert —
+                sie sind im Browser-Speicher (IndexedDB) hinterlegt und bleiben auf diesem Gerät erhalten.
+                Nach einem Import auf einem anderen Gerät müssen Bilder erneut hochgeladen werden.
+              </div>
+              <Button onClick={handleExport} className="gap-2 self-start">
+                <Download size={14} />
+                Backup herunterladen
+              </Button>
             </div>
+
+            <div className="border-t border-rose-50" />
+
+            {/* Import */}
+            <div className="flex flex-col gap-3">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Import</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Stellt Daten aus einem zuvor exportierten Backup wieder her.
+                </p>
+              </div>
+              <div className="rounded-xl bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-700">
+                <AlertTriangle size={11} className="inline mr-1" />
+                <span className="font-medium">Achtung:</span> Der Import überschreibt <strong>alle</strong> aktuellen Daten unwiderruflich.
+              </div>
+              <Button
+                variant="secondary"
+                onClick={() => { setImportError(null); setImportSuccess(false); fileInputRef.current?.click() }}
+                className="gap-2 self-start"
+              >
+                <Upload size={14} />
+                Backup importieren
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+
+              {importError && (
+                <div className="flex items-start gap-2 rounded-xl bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-600">
+                  <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
+                  <p>{importError}</p>
+                </div>
+              )}
+
+              {importSuccess && (
+                <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2 text-xs text-emerald-700">
+                  <CheckCircle2 size={13} />
+                  <p>Import erfolgreich! Alle Daten wurden wiederhergestellt.</p>
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── Reset tab ── */}
+      {activeTab === 'reset' && (
+        <div className="bg-white rounded-2xl border border-rose-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-rose-50">
+            <h2 className="text-sm font-semibold text-gray-700">🗑️ Alle Daten löschen</h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Setzt die App auf den Ausgangszustand zurück.
+            </p>
+          </div>
+
+          <div className="px-5 py-5 flex flex-col gap-4">
+
+            {/* What will be deleted */}
+            <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-3 flex flex-col gap-2">
+              <p className="text-xs font-medium text-gray-500 mb-1">Folgende Daten werden gelöscht:</p>
+              {[
+                { label: 'Quests',   count: questCount,    emoji: '📋' },
+                { label: 'Items',    count: itemCount,     emoji: '📦' },
+                { label: 'Gebäude', count: buildingCount, emoji: '🏗️' },
+                { label: 'Ziele',   count: goalCount,     emoji: '🎯' },
+                { label: 'Bilder',  count: null,          emoji: '🖼️' },
+              ].map(({ label, count, emoji }) => (
+                <div key={label} className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 text-gray-600">
+                    <span>{emoji}</span>
+                    <span>{label}</span>
+                  </span>
+                  <span className="font-medium text-gray-700">
+                    {count !== null ? `${count} Einträge` : 'alle (IndexedDB)'}
+                  </span>
+                </div>
+              ))}
+            </div>
+
             <div className="rounded-xl bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-700">
               <AlertTriangle size={11} className="inline mr-1" />
-              <span className="font-medium">Achtung:</span> Der Import überschreibt <strong>alle</strong> aktuellen Daten unwiderruflich.
+              <span className="font-medium">Achtung:</span> Diese Aktion ist <strong>unwiderruflich</strong>.
+              Erstelle vorher ein Backup unter dem Tab &bdquo;Datensicherung&ldquo;.
             </div>
-            <Button
-              variant="secondary"
-              onClick={() => { setImportError(null); setImportSuccess(false); fileInputRef.current?.click() }}
-              className="gap-2 self-start"
-            >
-              <Upload size={14} />
-              Backup importieren
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json,application/json"
-              className="hidden"
-              onChange={handleFileChange}
-            />
 
-            {importError && (
-              <div className="flex items-start gap-2 rounded-xl bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-600">
-                <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
-                <p>{importError}</p>
-              </div>
-            )}
-
-            {importSuccess && (
+            {resetSuccess && (
               <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2 text-xs text-emerald-700">
                 <CheckCircle2 size={13} />
-                <p>Import erfolgreich! Alle Daten wurden wiederhergestellt.</p>
+                <p>Alle Daten wurden erfolgreich gelöscht.</p>
               </div>
             )}
-          </div>
 
+            <Button
+              variant="danger"
+              onClick={() => { setResetSuccess(false); setShowResetDialog(true) }}
+              className="gap-2 self-start"
+            >
+              <Trash2 size={14} />
+              Alle Daten löschen
+            </Button>
+
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Confirm import dialog */}
       <ConfirmDialog
@@ -254,6 +380,16 @@ export default function SettingsPage() {
         confirmLabel="Importieren"
         onConfirm={handleImportConfirm}
         onCancel={() => setPendingBackup(null)}
+      />
+
+      {/* Confirm reset dialog */}
+      <ConfirmDialog
+        open={showResetDialog}
+        title="Alle Daten wirklich löschen?"
+        description="Quests, Items, Gebäude, Ziele, Inventar und alle hochgeladenen Bilder werden unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."
+        confirmLabel="Alles löschen"
+        onConfirm={() => { void handleResetConfirm() }}
+        onCancel={() => setShowResetDialog(false)}
       />
     </div>
   )
