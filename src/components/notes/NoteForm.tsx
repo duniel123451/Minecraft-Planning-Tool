@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { ImagePlus, X, Plus, Search } from 'lucide-react'
+import { ImagePlus, X, Plus, Search, PackagePlus } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { RichTextEditor } from '@/components/ui/RichTextEditor'
 import { NoteImage } from './NoteImage'
 import { saveImage, deleteImages, isDataUrl } from '@/lib/imageStorage'
+import { useItemStore } from '@/store/useItemStore'
 import type { NoteNode } from '@/types/note'
 import type { AnyNode } from '@/types'
 import { getNodeTitle } from '@/types'
@@ -51,18 +52,24 @@ export function NoteForm({ open, onClose, onSubmit, initialData, allNodes, allNo
       ? { title: initialData.title, content: initialData.content, images: [...initialData.images], tags: [...initialData.tags], linkedNodeIds: [...initialData.linkedNodeIds] }
       : emptyForm
   )
-  const [newTag, setNewTag]         = useState('')
-  const [nodeSearch, setNodeSearch] = useState('')
-  const [dragOver, setDragOver]     = useState(false)
-  const [imageError, setImageError] = useState<string | null>(null)
-  const fileInputRef                = useRef<HTMLInputElement>(null)
-  const newKeysRef                  = useRef<string[]>([])
+  const [newTag, setNewTag]               = useState('')
+  const [nodeSearch, setNodeSearch]       = useState('')
+  const [dragOver, setDragOver]           = useState(false)
+  const [imageError, setImageError]       = useState<string | null>(null)
+  const [showInlineCreate, setShowInline] = useState(false)
+  const [inlineName, setInlineName]       = useState('')
+  const [inlineMod, setInlineMod]         = useState('')
+  const fileInputRef                      = useRef<HTMLInputElement>(null)
+  const newKeysRef                        = useRef<string[]>([])
 
   // Reset cleanup state when dialog opens (no setForm — parent uses key prop to remount)
   useEffect(() => {
     if (open) {
       newKeysRef.current = []
       setImageError(null)
+      setShowInline(false)
+      setInlineName('')
+      setInlineMod('')
     }
   }, [open])
 
@@ -128,17 +135,54 @@ export function NoteForm({ open, onClose, onSubmit, initialData, allNodes, allNo
     onClose()
   }
 
+  // Inline-create a new item and immediately link it
+  const handleInlineCreate = () => {
+    if (!inlineName.trim()) return
+    useItemStore.getState().addItem({
+      name:         inlineName.trim(),
+      mod:          inlineMod.trim() || 'Vanilla',
+      status:       'needed',
+      reason:       '',
+      purpose:      '',
+      dependencies: [],
+      notes:        '',
+    })
+    const newItem = useItemStore.getState().items[0]
+    setForm(p => ({ ...p, linkedNodeIds: [...p.linkedNodeIds, newItem.id] }))
+    setInlineName('')
+    setInlineMod('')
+    setShowInline(false)
+  }
+
   // Combine AnyNodes + other notes (excluding self) for link list
   const selfId = initialData?.id
   const linkableNotes = allNotes.filter(n => n.id !== selfId)
 
   type LinkEntry = { id: string; label: string; typeKey: string }
+
+  // Selected entries always appear at the top regardless of search
+  const selectedEntries: LinkEntry[] = form.linkedNodeIds.flatMap(id => {
+    const node = allNodes.find(n => n.id === id)
+    if (node) return [{ id: node.id, label: getNodeTitle(node), typeKey: node.type }]
+    const note = linkableNotes.find(n => n.id === id)
+    if (note) return [{ id: note.id, label: note.title, typeKey: 'note' }]
+    return []
+  })
+
+  // Unselected entries filtered by search
   const filteredLinks: LinkEntry[] = [
+    ...selectedEntries,
     ...allNodes
-      .filter(n => !nodeSearch || getNodeTitle(n).toLowerCase().includes(nodeSearch.toLowerCase()))
+      .filter(n =>
+        !form.linkedNodeIds.includes(n.id) &&
+        (!nodeSearch || getNodeTitle(n).toLowerCase().includes(nodeSearch.toLowerCase()))
+      )
       .map(n => ({ id: n.id, label: getNodeTitle(n), typeKey: n.type })),
     ...linkableNotes
-      .filter(n => !nodeSearch || n.title.toLowerCase().includes(nodeSearch.toLowerCase()))
+      .filter(n =>
+        !form.linkedNodeIds.includes(n.id) &&
+        (!nodeSearch || n.title.toLowerCase().includes(nodeSearch.toLowerCase()))
+      )
       .map(n => ({ id: n.id, label: n.title, typeKey: 'note' })),
   ]
 
@@ -266,33 +310,78 @@ export function NoteForm({ open, onClose, onSubmit, initialData, allNodes, allNo
             {filteredLinks.length === 0 ? (
               <p className="text-xs text-gray-400 dark:text-slate-500 px-2 py-2 text-center">Keine Einträge gefunden</p>
             ) : (
-              filteredLinks.map(entry => {
+              filteredLinks.map((entry, idx) => {
                 const selected = form.linkedNodeIds.includes(entry.id)
                 const typeLabel = entry.typeKey === 'note' ? 'Notiz'
                   : entry.typeKey === 'quest' ? 'Quest'
                   : entry.typeKey === 'item' ? 'Item'
                   : 'Gebäude'
+                // Visual divider between selected and unselected items
+                const showDivider = idx > 0 && selected === false && form.linkedNodeIds.includes(filteredLinks[idx - 1].id)
                 return (
-                  <button
-                    key={entry.id}
-                    onClick={() => toggleNode(entry.id)}
-                    className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-colors text-sm min-h-[40px] ${
-                      selected
-                        ? 'bg-pink-50 dark:bg-pink-950 text-pink-600 dark:text-pink-400'
-                        : 'hover:bg-rose-50 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-300'
-                    }`}
-                  >
-                    <span className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${selected ? 'bg-pink-400 border-pink-400 text-white' : 'border-gray-300 dark:border-slate-500'}`}>
-                      {selected && <span className="text-xs leading-none">✓</span>}
-                    </span>
-                    <span>{nodeEmoji[entry.typeKey] ?? '🔗'}</span>
-                    <span className="flex-1 truncate">{entry.label}</span>
-                    <span className="text-xs text-gray-400 dark:text-slate-500">{typeLabel}</span>
-                  </button>
+                  <div key={entry.id}>
+                    {showDivider && <div className="my-0.5 border-t border-rose-100 dark:border-slate-700" />}
+                    <button
+                      onClick={() => toggleNode(entry.id)}
+                      className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-colors text-sm min-h-[40px] ${
+                        selected
+                          ? 'bg-pink-50 dark:bg-pink-950 text-pink-600 dark:text-pink-400'
+                          : 'hover:bg-rose-50 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-300'
+                      }`}
+                    >
+                      <span className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${selected ? 'bg-pink-400 border-pink-400 text-white' : 'border-gray-300 dark:border-slate-500'}`}>
+                        {selected && <span className="text-xs leading-none">✓</span>}
+                      </span>
+                      <span>{nodeEmoji[entry.typeKey] ?? '🔗'}</span>
+                      <span className="flex-1 truncate">{entry.label}</span>
+                      <span className="text-xs text-gray-400 dark:text-slate-500">{typeLabel}</span>
+                    </button>
+                  </div>
                 )
               })
             )}
           </div>
+
+          {/* Inline item creation */}
+          {!showInlineCreate ? (
+            <button
+              onClick={() => setShowInline(true)}
+              className="flex items-center gap-1.5 text-xs text-pink-500 hover:text-pink-600 transition-colors self-start"
+            >
+              <PackagePlus size={13} />
+              Item hinzufügen +
+            </button>
+          ) : (
+            <div className="rounded-xl border border-pink-200 dark:border-pink-900 bg-pink-50 dark:bg-pink-950/30 p-3 flex flex-col gap-2">
+              <p className="text-xs font-semibold text-pink-600 dark:text-pink-400">Neues Item anlegen & verknüpfen</p>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  autoFocus
+                  className="rounded-lg border border-rose-200 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-slate-100 px-2.5 py-1.5 text-sm outline-none focus:border-pink-400 placeholder-gray-400 dark:placeholder-slate-500"
+                  placeholder="Name *"
+                  value={inlineName}
+                  onChange={e => setInlineName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleInlineCreate()}
+                />
+                <input
+                  className="rounded-lg border border-rose-200 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-slate-100 px-2.5 py-1.5 text-sm outline-none focus:border-pink-400 placeholder-gray-400 dark:placeholder-slate-500"
+                  placeholder="Mod (optional)"
+                  value={inlineMod}
+                  onChange={e => setInlineMod(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleInlineCreate()}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleInlineCreate} disabled={!inlineName.trim()}>
+                  <Plus size={12} />
+                  Erstellen & verknüpfen
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => { setShowInline(false); setInlineName(''); setInlineMod('') }}>
+                  Abbrechen
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Actions */}
