@@ -85,7 +85,8 @@ export default function SettingsPage() {
   const [showResetDialog, setShowResetDialog] = useState(false)
   const [resetSuccess,    setResetSuccess]    = useState(false)
 
-  const unlockedIds = useAchievementStore(s => s.unlockedIds)
+  const unlockedIds       = useAchievementStore(s => s.unlockedIds)
+  const replayAchievement = useAchievementStore(s => s.replayAchievement)
 
   // ── Export ────────────────────────────────────────────────────────────────
 
@@ -409,13 +410,18 @@ export default function SettingsPage() {
                     const unlocked = isMythicUnlocked(a.id)
                     const isSecret = a.secret === true
                     const hidden   = isSecret && !unlocked
+                    const Tag      = unlocked ? 'button' : 'div'
                     return (
-                      <div
+                      <Tag
                         key={a.id}
+                        {...(unlocked ? {
+                          onClick: () => replayAchievement(a.id),
+                          title: 'Effekt nochmal abspielen',
+                        } : {})}
                         className={`
-                          flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all
+                          flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all w-full text-left
                           ${unlocked
-                            ? `${cfg.cardBg} ${cfg.ring}`
+                            ? `${cfg.cardBg} ${cfg.ring} hover:opacity-80 active:scale-[0.98] cursor-pointer`
                             : hidden
                               ? 'bg-gradient-to-r from-violet-950/60 via-fuchsia-950/60 to-pink-950/60 border-violet-800/50 dark:border-violet-700/50'
                               : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700 opacity-50 grayscale'}
@@ -435,7 +441,7 @@ export default function SettingsPage() {
                         {unlocked && (
                           <Trophy size={14} className={`flex-shrink-0 ${a.rarity === 'mythic' ? 'text-violet-400' : 'text-amber-400'}`} />
                         )}
-                      </div>
+                      </Tag>
                     )
                   })}
                 </div>

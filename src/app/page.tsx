@@ -39,8 +39,9 @@ export default function DashboardPage() {
   const items     = useItemStore((s) => s.items)
   const { goals } = useGoalStore()
   const playerName   = useSettingsStore(s => s.playerName)
-  const unlockedIds    = useAchievementStore(s => s.unlockedIds)
-  const manualUnlock   = useAchievementStore(s => s.manualUnlock)
+  const unlockedIds        = useAchievementStore(s => s.unlockedIds)
+  const manualUnlock       = useAchievementStore(s => s.manualUnlock)
+  const replayAchievement  = useAchievementStore(s => s.replayAchievement)
 
   const allNodes: AnyNode[] = useMemo(() => [...quests, ...items], [quests, items])
 
@@ -172,9 +173,11 @@ export default function DashboardPage() {
             {recentAchievements.map(a => {
               const cfg = RARITY_CONFIG[a.rarity]
               return (
-                <div
+                <button
                   key={a.id}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl border ${cfg.cardBg} ${cfg.ring}`}
+                  onClick={() => replayAchievement(a.id)}
+                  title="Effekt nochmal abspielen"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl border text-left w-full transition-opacity hover:opacity-80 active:scale-[0.98] ${cfg.cardBg} ${cfg.ring}`}
                 >
                   <span className="text-2xl flex-shrink-0">{a.emoji}</span>
                   <div className="flex-1 min-w-0">
@@ -184,7 +187,7 @@ export default function DashboardPage() {
                   <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-gradient-to-r ${cfg.gradient} text-white flex-shrink-0`}>
                     {cfg.label}
                   </span>
-                </div>
+                </button>
               )
             })}
           </div>

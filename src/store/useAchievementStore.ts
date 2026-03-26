@@ -7,10 +7,11 @@ interface AchievementStore {
   seenIds:      string[]   // persisted — toasts that have already been shown
   pendingQueue: string[]   // not persisted — IDs waiting to show, common first → mythic last
 
-  checkAndUnlock: (input: AchievementCheckInput) => void
-  manualUnlock:   (id: string) => void
-  dismissToast:   () => void
-  queueUnseen:    () => void   // call once after hydration to replay unseen toasts
+  checkAndUnlock:    (input: AchievementCheckInput) => void
+  manualUnlock:      (id: string) => void
+  replayAchievement: (id: string) => void
+  dismissToast:      () => void
+  queueUnseen:       () => void   // call once after hydration to replay unseen toasts
 }
 
 const safeStorage = createJSONStorage(() =>
@@ -61,6 +62,13 @@ export const useAchievementStore = create<AchievementStore>()(
           unlockedIds:  [...s.unlockedIds, id],
           pendingQueue: [...s.pendingQueue, id],
         }))
+      },
+
+      replayAchievement: (id) => {
+        set(s => {
+          if (s.pendingQueue.includes(id)) return s
+          return { pendingQueue: [...s.pendingQueue, id] }
+        })
       },
 
       dismissToast: () => set(s => {
