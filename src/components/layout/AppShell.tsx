@@ -15,6 +15,7 @@ import { useSettingsStore }     from '@/store/useSettingsStore'
 import { useAchievementStore }  from '@/store/useAchievementStore'
 import { useProgressStore }     from '@/store/useProgressStore'
 import { initXpTracking }       from '@/lib/progression/xpTracker'
+import { getLevelFromXp }       from '@/lib/progression/xp'
 
 interface AppShellProps {
   children: ReactNode
@@ -51,6 +52,7 @@ export function AppShell({ children }: AppShellProps) {
 
     // 3. Check achievements once after hydration
     const checkNow = () => {
+      const totalXp = useProgressStore.getState().totalXp
       useAchievementStore.getState().checkAndUnlock({
         quests:      useQuestStore.getState().quests,
         items:       useItemStore.getState().items,
@@ -58,6 +60,8 @@ export function AppShell({ children }: AppShellProps) {
         notes:       useNoteStore.getState().notes,
         goals:       useGoalStore.getState().goals,
         unlockedIds: useAchievementStore.getState().unlockedIds,
+        totalXp,
+        level:       getLevelFromXp(totalXp),
       })
     }
     checkNow()
@@ -68,6 +72,7 @@ export function AppShell({ children }: AppShellProps) {
     const unsubBuildings = useBuildingStore.subscribe(checkNow)
     const unsubNotes     = useNoteStore.subscribe(checkNow)
     const unsubGoals     = useGoalStore.subscribe(checkNow)
+    const unsubProgress  = useProgressStore.subscribe(checkNow)
 
     // 5. Start XP tracking (subscribes to store changes)
     const unsubXp = initXpTracking()
@@ -78,6 +83,7 @@ export function AppShell({ children }: AppShellProps) {
       unsubBuildings()
       unsubNotes()
       unsubGoals()
+      unsubProgress()
       unsubXp()
     }
   }, [])
