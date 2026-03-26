@@ -35,7 +35,6 @@ export const GraphItemNode = memo(({ data }: NodeProps<Node<GraphNodeData>>) => 
         ${h ? `${h.bg} ${h.border} ${h.ring}` : `${s.bg} ${s.border}`}
       `}
     >
-      {/* Invisible full-node target handle — lets the user drop anywhere on the node */}
       <Handle
         type="target"
         position={Position.Left}
@@ -52,19 +51,13 @@ export const GraphItemNode = memo(({ data }: NodeProps<Node<GraphNodeData>>) => 
       <Handle type="source" position={Position.Right} style={{ background: '#c4b5fd', border: '2px solid #a78bfa', width: 12, height: 12, cursor: 'crosshair' }} />
 
       {data.highlight === 'goal' && (
-        <div className="absolute -top-2 -right-2 text-xs bg-pink-400 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-sm">
-          🎯
-        </div>
+        <div className="absolute -top-2 -right-2 text-xs bg-pink-400 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-sm">🎯</div>
       )}
       {data.highlight === 'nextStep' && (
-        <div className="absolute -top-2 -right-2 text-xs bg-blue-400 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-sm">
-          ▶
-        </div>
+        <div className="absolute -top-2 -right-2 text-xs bg-blue-400 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-sm">▶</div>
       )}
       {data.highlight === 'blocker' && (
-        <div className="absolute -top-2 -right-2 text-xs bg-red-400 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-sm">
-          🔒
-        </div>
+        <div className="absolute -top-2 -right-2 text-xs bg-red-400 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-sm">🔒</div>
       )}
 
       <div className="flex items-center gap-1.5 mb-1">

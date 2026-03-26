@@ -20,13 +20,16 @@ import '@xyflow/react/dist/style.css'
 import { GraphQuestNode }    from './GraphQuestNode'
 import { GraphItemNode }     from './GraphItemNode'
 import { GraphBuildingNode } from './GraphBuildingNode'
+import { GraphNoteNode }     from './GraphNoteNode'
 import type { GraphNodeData } from '@/lib/graph/convert'
 import type { AnyNode } from '@/types'
+import type { NoteNode } from '@/types/note'
 
 const nodeTypes: NodeTypes = {
   questNode:    GraphQuestNode    as unknown as ComponentType<NodeProps>,
   itemNode:     GraphItemNode     as unknown as ComponentType<NodeProps>,
   buildingNode: GraphBuildingNode as unknown as ComponentType<NodeProps>,
+  noteNode:     GraphNoteNode     as unknown as ComponentType<NodeProps>,
 }
 
 const stateColor: Record<string, string> = {
@@ -38,7 +41,7 @@ const stateColor: Record<string, string> = {
 interface GraphViewProps {
   nodes:           Node<GraphNodeData>[]
   edges:           Edge[]
-  onNodeClick?:    (node: AnyNode) => void
+  onNodeClick?:    (node: AnyNode | NoteNode) => void
   onConnect?:      (connection: Connection) => void
   onEdgesDelete?:  (edges: Edge[]) => void
   onReconnect?:    (oldEdge: Edge, newConnection: Connection) => void
@@ -64,7 +67,7 @@ export function GraphView({
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
       const data = node.data as GraphNodeData
-      onNodeClick?.(data.node)
+      onNodeClick?.(data.node as AnyNode | NoteNode)
     },
     [onNodeClick],
   )
@@ -115,6 +118,7 @@ export function GraphView({
         <MiniMap
           nodeColor={(n) => {
             const d = n.data as GraphNodeData
+            if (d?.state === 'note') return '#fcd34d'
             return stateColor[d?.state ?? 'locked']
           }}
           style={{

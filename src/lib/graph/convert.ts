@@ -1,12 +1,13 @@
 import type { Node, Edge } from '@xyflow/react'
 import type { AnyNode } from '@/types'
+import type { NoteNode } from '@/types/note'
 import { getNodeState, type NodeState } from '@/lib/progression'
 
 export type GraphHighlight = 'goal' | 'nextStep' | 'blocker' | 'path' | 'nextBestAction' | null
 
 export interface GraphNodeData {
-  node: AnyNode
-  state: NodeState
+  node: AnyNode | NoteNode
+  state: NodeState | 'note'
   highlight: GraphHighlight
   [key: string]: unknown  // React Flow requires this
 }
@@ -20,6 +21,7 @@ const EDGE_COLORS: Record<string, string> = {
 /**
  * Convert AnyNode[] into React Flow nodes + edges.
  * Accepts optional highlight sets for goal-based visual emphasis.
+ * Also accepts optional visibleNotes to render note nodes with amber edges.
  */
 export function convertNodesToGraph(
   allNodes: AnyNode[],
@@ -31,12 +33,16 @@ export function convertNodesToGraph(
     pathIds:            Set<string>
     nextBestActionIds?: Set<string>
   },
+  visibleNotes: NoteNode[] = [],
 ): {
   nodes: Node<GraphNodeData>[]
   edges: Edge[]
 } {
-  const visibleSet = new Set(visibleNodes.map(n => n.id))
+  const visibleSet     = new Set(visibleNodes.map(n => n.id))
+  const visibleNoteSet = new Set(visibleNotes.map(n => n.id))
+  const allVisibleIds  = new Set([...visibleSet, ...visibleNoteSet])
 
+  // — Regular nodes (quest / item / building)
   const nodes: Node<GraphNodeData>[] = visibleNodes.map(node => {
     let highlight: GraphHighlight = null
     if (highlights) {
@@ -61,11 +67,22 @@ export function convertNodesToGraph(
     }
   })
 
+  // — Note nodes
+  visibleNotes.forEach(note => {
+    nodes.push({
+      id:   note.id,
+      type: 'noteNode',
+      data: { node: note, state: 'note', highlight: null },
+      position: { x: 0, y: 0 },
+    })
+  })
+
   const edges: Edge[] = []
 
+  // — Regular edges (quest/item/building dependencies)
   visibleNodes.forEach(node => {
     node.dependencies.forEach(dep => {
-      if (!visibleSet.has(dep.targetId)) return
+      if (!allVisibleIds.has(dep.targetId)) return
 
       const depColor = EDGE_COLORS[dep.type] ?? '#94a3b8'
       const isDone   = node.status === 'done' || node.status === 'have'
@@ -114,6 +131,31 @@ export function convertNodesToGraph(
     })
   })
 
+  // — Note edges (from linkedNodeIds)
+  visibleNotes.forEach(note => {
+    note.linkedNodeIds.forEach(targetId => {
+      if (targetId === note.id) return
+      if (!allVisibleIds.has(targetId)) return
+      edges.push({
+        id:       `note:${note.id}→${targetId}`,
+        source:   note.id,
+        target:   targetId,
+        type:     'smoothstep',
+        animated: false,
+        style: {
+          stroke:          '#f59e0b',
+          strokeWidth:     1.5,
+          strokeDasharray: '5 3',
+        },
+        markerEnd: {
+          type:   'arrowclosed',
+          color:  '#f59e0b',
+          width:  14,
+          height: 14,
+        },
+      })
+    })
+  })
+
   return { nodes, edges }
 }
-

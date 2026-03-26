@@ -1,5 +1,6 @@
 export interface NoteNode {
   id: string
+  type: 'note'
   title: string
   content: string
   images: string[]        // UUID keys → IndexedDB (legacy 'data:' also supported)

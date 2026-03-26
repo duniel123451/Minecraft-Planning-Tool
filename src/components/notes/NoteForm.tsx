@@ -40,7 +40,7 @@ const nodeEmoji: Record<string, string> = {
 interface NoteFormProps {
   open:         boolean
   onClose:      () => void
-  onSubmit:     (data: Omit<NoteNode, 'id' | 'createdAt' | 'updatedAt'>) => void
+  onSubmit:     (data: Omit<NoteNode, 'id' | 'type' | 'createdAt' | 'updatedAt'>) => void
   initialData?: NoteNode | null
   allNodes:     AnyNode[]
   allNotes?:    NoteNode[]
