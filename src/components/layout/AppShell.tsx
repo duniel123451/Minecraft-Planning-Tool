@@ -4,6 +4,8 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { Menu } from 'lucide-react'
 import { Sidebar }              from './Sidebar'
 import { AchievementToast }     from '@/components/ui/AchievementToast'
+import { XpToast }              from '@/components/ui/XpToast'
+import { LevelUpModal }         from '@/components/ui/LevelUpModal'
 import { useQuestStore }        from '@/store/useQuestStore'
 import { useBuildingStore }     from '@/store/useBuildingStore'
 import { useItemStore }         from '@/store/useItemStore'
@@ -11,6 +13,8 @@ import { useGoalStore }         from '@/store/useGoalStore'
 import { useNoteStore }         from '@/store/useNoteStore'
 import { useSettingsStore }     from '@/store/useSettingsStore'
 import { useAchievementStore }  from '@/store/useAchievementStore'
+import { useProgressStore }     from '@/store/useProgressStore'
+import { initXpTracking }       from '@/lib/progression/xpTracker'
 
 interface AppShellProps {
   children: ReactNode
@@ -33,6 +37,7 @@ export function AppShell({ children }: AppShellProps) {
     useNoteStore.persist.rehydrate()
     useSettingsStore.persist.rehydrate()
     useAchievementStore.persist.rehydrate()
+    useProgressStore.persist.rehydrate()
 
     // 1b. Queue any already-unlocked achievements the user hasn't seen a toast for yet
     useAchievementStore.getState().queueUnseen()
@@ -64,12 +69,16 @@ export function AppShell({ children }: AppShellProps) {
     const unsubNotes     = useNoteStore.subscribe(checkNow)
     const unsubGoals     = useGoalStore.subscribe(checkNow)
 
+    // 5. Start XP tracking (subscribes to store changes)
+    const unsubXp = initXpTracking()
+
     return () => {
       unsubQuests()
       unsubItems()
       unsubBuildings()
       unsubNotes()
       unsubGoals()
+      unsubXp()
     }
   }, [])
 
@@ -98,6 +107,8 @@ export function AppShell({ children }: AppShellProps) {
       </div>
 
       <AchievementToast />
+      <XpToast />
+      <LevelUpModal />
     </div>
   )
 }
