@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react'
 
-const ZOOM = 2.5
+const ZOOM        = 2.5
+const DRAG_THRESH = 4   // px — below this a drag counts as a click
 
 interface ImageLightboxProps {
   /** imageRefs, UUIDs, or data-URLs — one per image */
@@ -20,9 +21,15 @@ export function ImageLightbox({
   onClose,
   renderImage,
 }: ImageLightboxProps) {
-  const [idx, setIdx]       = useState(initialIndex)
-  const [zoomed, setZoomed] = useState(false)
-  const scrollRef           = useRef<HTMLDivElement>(null)
+  const [idx, setIdx]         = useState(initialIndex)
+  const [zoomed, setZoomed]   = useState(false)
+  const [dragging, setDragging] = useState(false)
+  const scrollRef             = useRef<HTMLDivElement>(null)
+
+  // Drag state (refs so mouse handlers never become stale)
+  const dragOrigin  = useRef({ x: 0, y: 0, sl: 0, st: 0 })
+  const dragMoved   = useRef(0)
+  const isDragging  = useRef(false)
 
   const prev = () => { setZoomed(false); setIdx(i => (i - 1 + imageRefs.length) % imageRefs.length) }
   const next = () => { setZoomed(false); setIdx(i => (i + 1) % imageRefs.length) }
@@ -39,24 +46,25 @@ export function ImageLightbox({
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  /** Zoom in centred on the exact pixel the user clicked. */
-  const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation()
-
-    if (zoomed) {
-      setZoomed(false)
-      return
+  // Release drag if mouse leaves the window
+  useEffect(() => {
+    if (!zoomed) return
+    const up = () => {
+      if (!isDragging.current) return
+      isDragging.current = false
+      setDragging(false)
     }
+    window.addEventListener('mouseup', up)
+    return () => window.removeEventListener('mouseup', up)
+  }, [zoomed])
 
-    // Fraction within the current (un-zoomed) image wrapper
+  /** Click on un-zoomed image → zoom in, centring on the clicked pixel. */
+  const handleUnzoomedClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation()
     const rect = e.currentTarget.getBoundingClientRect()
-    const fracX = (e.clientX - rect.left)  / rect.width
-    const fracY = (e.clientY - rect.top)   / rect.height
-
+    const fracX = (e.clientX - rect.left) / rect.width
+    const fracY = (e.clientY - rect.top)  / rect.height
     setZoomed(true)
-
-    // After two animation frames the DOM has the zoomed layout; scroll so the
-    // clicked point ends up in the centre of the scroll container.
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const c = scrollRef.current
       if (!c) return
@@ -64,6 +72,37 @@ export function ImageLightbox({
       c.scrollTop  = fracY * c.scrollHeight - c.clientHeight / 2
     }))
   }
+
+  /** Begin drag-to-pan. */
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!zoomed) return
+    e.preventDefault()
+    const c = scrollRef.current
+    isDragging.current = true
+    dragMoved.current  = 0
+    dragOrigin.current = { x: e.clientX, y: e.clientY, sl: c?.scrollLeft ?? 0, st: c?.scrollTop ?? 0 }
+    setDragging(true)
+  }
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging.current || !scrollRef.current) return
+    const dx = e.clientX - dragOrigin.current.x
+    const dy = e.clientY - dragOrigin.current.y
+    dragMoved.current      += Math.abs(dx) + Math.abs(dy)
+    scrollRef.current.scrollLeft = dragOrigin.current.sl - dx
+    scrollRef.current.scrollTop  = dragOrigin.current.st - dy
+  }
+
+  const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging.current) return
+    isDragging.current = false
+    setDragging(false)
+    e.stopPropagation()
+    // Treat as click (zoom out) only when barely moved
+    if (dragMoved.current < DRAG_THRESH) setZoomed(false)
+  }
+
+  const zoomedCursor = dragging ? 'cursor-grabbing' : 'cursor-grab'
 
   return (
     <div
@@ -97,27 +136,27 @@ export function ImageLightbox({
 
       {/* Image area */}
       {zoomed ? (
-        /* Zoomed: scrollable container, image scaled via CSS zoom */
+        /* Zoomed: drag-to-pan; short click zooms out */
         <div
           ref={scrollRef}
-          className="flex-1 overflow-auto cursor-zoom-out"
-          onClick={e => { e.stopPropagation(); setZoomed(false) }}
+          className={`flex-1 overflow-auto select-none ${zoomedCursor}`}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onClick={e => e.stopPropagation()}
         >
-          {/* Inner wrapper carries the zoom; CSS `zoom` affects layout → scrollbars work naturally */}
+          {/* CSS `zoom` affects layout → scrollbars / scrollWidth reflect zoomed size */}
           <div style={{ zoom: ZOOM }} className="inline-block">
             {renderImage(
               imageRefs[idx],
-              'block max-w-[92vw] max-h-[78vh] w-auto h-auto object-contain rounded-xl shadow-2xl select-none',
+              'block max-w-[92vw] max-h-[78vh] w-auto h-auto object-contain rounded-xl shadow-2xl',
             )}
           </div>
         </div>
       ) : (
         /* Normal: centred, click to zoom at click point */
         <div className="flex-1 flex items-center justify-center">
-          <div
-            className="cursor-zoom-in"
-            onClick={handleImageClick}
-          >
+          <div className="cursor-zoom-in" onClick={handleUnzoomedClick}>
             {renderImage(
               imageRefs[idx],
               'block max-w-[92vw] max-h-[78vh] w-auto h-auto object-contain rounded-xl shadow-2xl select-none',
@@ -146,7 +185,9 @@ export function ImageLightbox({
 
       {/* Hint */}
       <p className="flex-shrink-0 text-center text-white/25 text-[10px] pb-3 pointer-events-none select-none">
-        {zoomed ? 'Scrollen zum Erkunden · Klick zum Herauszoomen' : 'Klick zum Hineinzoomen'}
+        {zoomed
+          ? 'Ziehen zum Erkunden · Klick zum Herauszoomen'
+          : 'Klick zum Hineinzoomen'}
         {imageRefs.length > 1 ? ' · ← →' : ''}
         {' · Esc schließen'}
       </p>
