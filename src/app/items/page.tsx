@@ -35,6 +35,7 @@ export default function ItemsPage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [filterMod, setFilterMod] = useState('all')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'status'>('newest')
 
   const allMods = useMemo(() => {
     const mods = Array.from(new Set(items.map((i) => i.mod).filter(Boolean)))
@@ -57,8 +58,12 @@ export default function ItemsPage() {
 
   const sorted = useMemo(() => {
     const sOrder: Record<ItemStatus, number> = { needed: 0, collecting: 1, have: 2 }
-    return [...filtered].sort((a, b) => sOrder[a.status] - sOrder[b.status])
-  }, [filtered])
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'newest') return b.createdAt.localeCompare(a.createdAt)
+      if (sortBy === 'oldest') return a.createdAt.localeCompare(b.createdAt)
+      return sOrder[a.status] - sOrder[b.status]
+    })
+  }, [filtered, sortBy])
 
   const handleEdit = (item: ItemNode) => {
     setEditTarget(item)
@@ -183,6 +188,15 @@ export default function ItemsPage() {
                 ))}
               </select>
             )}
+            <select
+              className="rounded-xl border border-rose-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-2 text-xs text-gray-800 dark:text-slate-100 outline-none focus:border-pink-400"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'status')}
+            >
+              <option value="newest">Neueste zuerst</option>
+              <option value="oldest">Älteste zuerst</option>
+              <option value="status">Status</option>
+            </select>
           </div>
 
           {/* Item list/grid */}

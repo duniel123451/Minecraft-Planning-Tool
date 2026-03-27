@@ -24,7 +24,6 @@ export const GraphBuildingNode = memo(({ data }: NodeProps<Node<GraphNodeData>>)
 
   return (
     <div className={`relative w-52 rounded-2xl border-2 px-3 py-2.5 shadow-sm select-none ${s.bg} ${s.border}`}>
-      {/* Invisible full-body target handle */}
       <Handle
         type="target"
         position={Position.Left}
@@ -56,7 +55,6 @@ export const GraphBuildingNode = memo(({ data }: NodeProps<Node<GraphNodeData>>)
         <div className="mt-1 text-xs text-gray-400 truncate">{building.location}</div>
       )}
 
-      {/* Material requirements mini-list */}
       {reqs.length > 0 && (
         <div className={`mt-2 pt-2 border-t ${s.divider} flex flex-col gap-1.5`}>
           {reqs.slice(0, 3).map(req => {

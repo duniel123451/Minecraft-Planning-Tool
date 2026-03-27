@@ -35,6 +35,7 @@ export default function QuestsPage() {
   const [filterPriority, setFilterPriority] = useState<FilterPriority>('all')
   const [showOnlyRoots, setShowOnlyRoots] = useState(false)
   const [goalNode, setGoalNode] = useState<AnyNode | null>(null)
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'status'>('newest')
 
   const filtered = useMemo(() => {
     return quests.filter((q) => {
@@ -49,12 +50,12 @@ export default function QuestsPage() {
   const sorted = useMemo(() => {
     const pOrder = { high: 0, medium: 1, low: 2 }
     const sOrder = { 'in-progress': 0, open: 1, done: 2 }
-    return [...filtered].sort(
-      (a, b) =>
-        sOrder[a.status] - sOrder[b.status] ||
-        pOrder[a.priority] - pOrder[b.priority]
-    )
-  }, [filtered])
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'newest') return b.createdAt.localeCompare(a.createdAt)
+      if (sortBy === 'oldest') return a.createdAt.localeCompare(b.createdAt)
+      return sOrder[a.status] - sOrder[b.status] || pOrder[a.priority] - pOrder[b.priority]
+    })
+  }, [filtered, sortBy])
 
   const handleEdit = (quest: QuestNode) => {
     setEditTarget(quest)
@@ -152,6 +153,15 @@ export default function QuestsPage() {
           <option value="high">Hoch</option>
           <option value="medium">Mittel</option>
           <option value="low">Niedrig</option>
+        </select>
+        <select
+          className="rounded-xl border border-rose-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-2 text-xs text-gray-800 dark:text-slate-100 outline-none focus:border-pink-400"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'status')}
+        >
+          <option value="newest">Neueste zuerst</option>
+          <option value="oldest">Älteste zuerst</option>
+          <option value="status">Status & Priorität</option>
         </select>
       </div>
 

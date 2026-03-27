@@ -15,31 +15,53 @@ import { convertNodesToGraph }         from '@/lib/graph/convert'
 import { applyAutoLayout }             from '@/lib/graph/layout'
 import { validateNewRequiresEdge }     from '@/lib/graph/validation'
 import { parseEdgeId, addRequiresDep, removeRequiresDep } from '@/lib/graph/editing'
-import { getNodeTitle, isNodeDone, type AnyNode } from '@/types'
+import {
+  getNodeTitle, isNodeDone,
+  type AnyNode, type QuestStatus, type ItemStatus, type BuildingStatus,
+} from '@/types'
 import { getNodeState, getBlockedDependencies, getDependencyChain } from '@/lib/progression'
 import { getRequiredNodesForGoal, getNextStepsForGoal, getBlockingNodesForGoal } from '@/lib/planning'
-import { Badge }   from '@/components/ui/Badge'
-import { Button }  from '@/components/ui/Button'
+import { Badge }         from '@/components/ui/Badge'
+import { Button }        from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { UndoToast }     from '@/components/ui/UndoToast'
+import { useDeleteNode } from '@/hooks/useDeleteNode'
 
-type StatusFilter = 'all' | 'done' | 'available' | 'locked'
+type StatusFilter = 'all' | 'not-completed' | 'done' | 'available' | 'locked'
+
+// Suppress unused import warnings for types only used in JSX narrowing
+type _QuestStatus    = QuestStatus
+type _ItemStatus     = ItemStatus
+type _BuildingStatus = BuildingStatus
 
 export default function GraphPage() {
-  const quests          = useQuestStore(s => s.quests)
-  const items           = useItemStore(s => s.items)
-  const buildings       = useBuildingStore(s => s.buildings)
-  const updateBuilding  = useBuildingStore(s => s.updateBuilding)
+  const quests             = useQuestStore(s => s.quests)
+  const updateQuest        = useQuestStore(s => s.updateQuest)
+  const items              = useItemStore(s => s.items)
+  const updateItem         = useItemStore(s => s.updateItem)
+  const buildings          = useBuildingStore(s => s.buildings)
+  const updateBuilding     = useBuildingStore(s => s.updateBuilding)
+  const undoDeleteBuilding = useBuildingStore(s => s.undoDelete)
+
+  const { deleteNodeAndCleanup, undoDeleteQuest, undoDeleteItem } = useDeleteNode()
 
   const [showQuests,    setShowQuests]    = useState(true)
   const [showItems,     setShowItems]     = useState(true)
   const [showBuildings, setShowBuildings] = useState(true)
   const [statusFilter,  setStatusFilter]  = useState<StatusFilter>('all')
   const [modFilter,     setModFilter]     = useState('all')
+
   const [selectedNode,  setSelectedNode]  = useState<AnyNode | null>(null)
   const [selectedEdge,  setSelectedEdge]  = useState<Edge | null>(null)
   const [showFilters,   setShowFilters]   = useState(false)
   const [showCreateQuestModal,    setShowCreateQuestModal]    = useState(false)
   const [showCreateBuildingModal, setShowCreateBuildingModal] = useState(false)
   const [edgeError,     setEdgeError]     = useState<string | null>(null)
+
+  const [deleteConfirmNode, setDeleteConfirmNode] = useState<AnyNode | null>(null)
+  const [showUndo,          setShowUndo]          = useState(false)
+  const [lastDeletedTitle,  setLastDeletedTitle]  = useState('')
+  const [lastDeletedType,   setLastDeletedType]   = useState<'quest' | 'item' | 'building'>('quest')
 
   const { goals, toggleGoal, isGoal } = useGoalStore()
 
@@ -79,7 +101,11 @@ export default function GraphPage() {
 
       if (statusFilter !== 'all') {
         const state = getNodeState(node.id, allNodes)
-        if (state !== statusFilter) return false
+        if (statusFilter === 'not-completed') {
+          if (state === 'done') return false
+        } else {
+          if (state !== statusFilter) return false
+        }
       }
 
       return true
@@ -170,9 +196,36 @@ export default function GraphPage() {
     addRequiresDep(newDependent, newRequired, freshNodes)
   }, [allNodes, showEdgeError])
 
+  // ─── Node delete ──────────────────────────────────────────────────────────
+
+  const handleDeleteConfirm = useCallback(() => {
+    if (!deleteConfirmNode) return
+
+    setLastDeletedTitle(getNodeTitle(deleteConfirmNode))
+    setLastDeletedType(deleteConfirmNode.type)
+    deleteNodeAndCleanup(deleteConfirmNode.id, deleteConfirmNode.type)
+
+    setDeleteConfirmNode(null)
+    setSelectedNode(null)
+    setShowUndo(true)
+  }, [deleteConfirmNode, deleteNodeAndCleanup])
+
+  const handleUndoDelete = useCallback(() => {
+    if (lastDeletedType === 'quest')      undoDeleteQuest()
+    else if (lastDeletedType === 'item')  undoDeleteItem()
+    else                                  undoDeleteBuilding()
+    setShowUndo(false)
+  }, [lastDeletedType, undoDeleteQuest, undoDeleteItem, undoDeleteBuilding])
+
   // ─── Detail panel data ─────────────────────────────────────────────────────
 
-  // Live building data (reactive — reflects store updates without waiting for node re-click)
+  // Live node data (reactive — reflects store updates without re-click)
+  const liveQuest    = selectedNode?.type === 'quest'
+    ? quests.find(q => q.id === selectedNode.id) ?? null
+    : null
+  const liveItem     = selectedNode?.type === 'item'
+    ? items.find(i => i.id === selectedNode.id) ?? null
+    : null
   const liveBuilding = selectedNode?.type === 'building'
     ? buildings.find(b => b.id === selectedNode.id) ?? null
     : null
@@ -281,17 +334,25 @@ export default function GraphPage() {
       {showFilters && (
         <div className="flex flex-wrap items-center gap-2 px-4 py-2 bg-rose-50 border-b border-rose-100 flex-shrink-0">
           <span className="text-xs font-medium text-gray-500">Status:</span>
-          {(['all', 'available', 'locked', 'done'] as StatusFilter[]).map(s => (
+          {(
+            [
+              { value: 'all',           label: 'Alle' },
+              { value: 'not-completed', label: '🔄 Nicht fertig' },
+              { value: 'done',          label: '✅ Erledigt' },
+              { value: 'available',     label: '🟡 Verfügbar' },
+              { value: 'locked',        label: '🔒 Gesperrt' },
+            ] as { value: StatusFilter; label: string }[]
+          ).map(({ value, label }) => (
             <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
+              key={value}
+              onClick={() => setStatusFilter(value)}
               className={`px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
-                statusFilter === s
+                statusFilter === value
                   ? 'bg-pink-400 text-white'
                   : 'bg-white text-gray-500 border border-rose-100 hover:bg-rose-50'
               }`}
             >
-              {s === 'all' ? 'Alle' : s === 'available' ? '🟡 Verfügbar' : s === 'locked' ? '🔒 Gesperrt' : '✅ Erledigt'}
+              {label}
             </button>
           ))}
 
@@ -366,7 +427,7 @@ export default function GraphPage() {
           )}
         </div>
 
-        {/* Detail panel */}
+        {/* Node detail panel */}
         {selectedNode && (
           <div className="w-72 flex-shrink-0 bg-white border-l border-rose-100 overflow-y-auto flex flex-col">
             {/* Header */}
@@ -400,6 +461,7 @@ export default function GraphPage() {
                   </button>
                 )}
               </div>
+
               {nodeState && (
                 <div className="mt-2">
                   <Badge variant={stateVariant[nodeState]}>
@@ -407,6 +469,58 @@ export default function GraphPage() {
                   </Badge>
                 </div>
               )}
+
+              {/* Status actions */}
+              <div className="mt-3 flex flex-col gap-1.5">
+                {selectedNode.type === 'quest' && (<>
+                  <button
+                    onClick={() => updateQuest(selectedNode.id, { status: liveQuest?.status === 'done' ? 'open' : 'done' })}
+                    className={`w-full py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                      liveQuest?.status === 'done'
+                        ? 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        : 'bg-emerald-400 text-white hover:bg-emerald-500'
+                    }`}
+                  >
+                    {liveQuest?.status === 'done' ? '↩ Erledigt zurücksetzen' : '✅ Als erledigt markieren'}
+                  </button>
+                  <div className="flex gap-1">
+                    <button onClick={() => updateQuest(selectedNode.id, { status: 'in-progress' })} className={`flex-1 py-1 rounded-lg text-xs font-medium border transition-colors ${liveQuest?.status === 'in-progress' ? 'bg-amber-400 text-white border-amber-400' : 'bg-white text-gray-400 border-gray-200 hover:border-amber-300 hover:text-amber-600'}`}>🔄 In Arbeit</button>
+                    <button onClick={() => updateQuest(selectedNode.id, { status: 'open' })} className={`flex-1 py-1 rounded-lg text-xs font-medium border transition-colors ${liveQuest?.status === 'open' ? 'bg-rose-100 text-rose-600 border-rose-200' : 'bg-white text-gray-400 border-gray-200 hover:border-rose-200 hover:text-rose-500'}`}>⭕ Offen</button>
+                  </div>
+                </>)}
+                {selectedNode.type === 'item' && (<>
+                  <button
+                    onClick={() => updateItem(selectedNode.id, { status: liveItem?.status === 'have' ? 'needed' : 'have' })}
+                    className={`w-full py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                      liveItem?.status === 'have'
+                        ? 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        : 'bg-emerald-400 text-white hover:bg-emerald-500'
+                    }`}
+                  >
+                    {liveItem?.status === 'have' ? '↩ Zurücksetzen' : '✅ Als vorhanden markieren'}
+                  </button>
+                  <div className="flex gap-1">
+                    <button onClick={() => updateItem(selectedNode.id, { status: 'collecting' })} className={`flex-1 py-1 rounded-lg text-xs font-medium border transition-colors ${liveItem?.status === 'collecting' ? 'bg-purple-400 text-white border-purple-400' : 'bg-white text-gray-400 border-gray-200 hover:border-purple-300 hover:text-purple-600'}`}>📥 Sammle</button>
+                    <button onClick={() => updateItem(selectedNode.id, { status: 'needed' })} className={`flex-1 py-1 rounded-lg text-xs font-medium border transition-colors ${liveItem?.status === 'needed' ? 'bg-rose-100 text-rose-600 border-rose-200' : 'bg-white text-gray-400 border-gray-200 hover:border-rose-200 hover:text-rose-500'}`}>🔍 Gesucht</button>
+                  </div>
+                </>)}
+                {selectedNode.type === 'building' && (<>
+                  <button
+                    onClick={() => updateBuilding(selectedNode.id, { status: liveBuilding?.status === 'done' ? 'planned' : 'done' })}
+                    className={`w-full py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                      liveBuilding?.status === 'done'
+                        ? 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        : 'bg-emerald-400 text-white hover:bg-emerald-500'
+                    }`}
+                  >
+                    {liveBuilding?.status === 'done' ? '↩ Zurücksetzen' : '✅ Als fertig markieren'}
+                  </button>
+                  <div className="flex gap-1">
+                    <button onClick={() => updateBuilding(selectedNode.id, { status: 'in-progress' })} className={`flex-1 py-1 rounded-lg text-xs font-medium border transition-colors ${liveBuilding?.status === 'in-progress' ? 'bg-teal-400 text-white border-teal-400' : 'bg-white text-gray-400 border-gray-200 hover:border-teal-300 hover:text-teal-600'}`}>🔨 Im Bau</button>
+                    <button onClick={() => updateBuilding(selectedNode.id, { status: 'planned' })} className={`flex-1 py-1 rounded-lg text-xs font-medium border transition-colors ${liveBuilding?.status === 'planned' ? 'bg-rose-100 text-rose-600 border-rose-200' : 'bg-white text-gray-400 border-gray-200 hover:border-rose-200 hover:text-rose-500'}`}>📐 Geplant</button>
+                  </div>
+                </>)}
+              </div>
             </div>
 
             <div className="flex-1 px-4 py-3 flex flex-col gap-4 text-xs">
@@ -645,10 +759,18 @@ export default function GraphPage() {
               )}
             </div>
 
-            <div className="px-4 py-3 border-t border-rose-50">
+            <div className="px-4 py-3 border-t border-rose-50 flex items-center gap-2">
+              <button
+                onClick={() => setDeleteConfirmNode(selectedNode)}
+                className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 transition-colors"
+                title="Node löschen"
+              >
+                <Trash2 size={11} />
+                Löschen
+              </button>
               <button
                 onClick={() => setSelectedNode(null)}
-                className="w-full text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                className="ml-auto text-xs text-gray-400 hover:text-gray-600 transition-colors"
               >
                 Schließen
               </button>
@@ -665,6 +787,28 @@ export default function GraphPage() {
       {/* Create building modal */}
       {showCreateBuildingModal && (
         <GraphCreateBuildingModal onClose={() => setShowCreateBuildingModal(false)} />
+      )}
+
+      {/* Delete confirm dialog */}
+      <ConfirmDialog
+        open={deleteConfirmNode !== null}
+        title={`${
+          deleteConfirmNode?.type === 'quest' ? 'Quest' :
+          deleteConfirmNode?.type === 'item' ? 'Item' : 'Gebäude'
+        } löschen?`}
+        description="Diese Aktion kann rückgängig gemacht werden."
+        confirmLabel="Löschen"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteConfirmNode(null)}
+      />
+
+      {/* Undo toast */}
+      {showUndo && (
+        <UndoToast
+          message={`"${lastDeletedTitle}" gelöscht`}
+          onUndo={handleUndoDelete}
+          onDismiss={() => setShowUndo(false)}
+        />
       )}
     </div>
   )

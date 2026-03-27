@@ -70,7 +70,7 @@ export function GraphView({
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
       const data = node.data as GraphNodeData
-      onNodeClick?.(data.node)
+      onNodeClick?.(data.node as AnyNode)
     },
     [onNodeClick],
   )

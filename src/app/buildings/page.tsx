@@ -24,6 +24,7 @@ export default function BuildingsPage() {
   const [showUndo, setShowUndo] = useState(false)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest')
 
   const filtered = useMemo(() => {
     return buildings.filter((b) => {
@@ -32,6 +33,14 @@ export default function BuildingsPage() {
       return true
     })
   }, [buildings, search, filterStatus])
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) =>
+      sortBy === 'newest'
+        ? b.createdAt.localeCompare(a.createdAt)
+        : a.createdAt.localeCompare(b.createdAt)
+    )
+  }, [filtered, sortBy])
 
   const handleEdit = (building: Building) => {
     setEditTarget(building)
@@ -115,8 +124,9 @@ export default function BuildingsPage() {
         ))}
       </div>
 
-      {/* Search */}
-      <div className="flex items-center gap-2 bg-white dark:bg-slate-800 rounded-xl border border-rose-200 dark:border-slate-600 px-3 py-2 mb-4">
+      {/* Search + sort */}
+      <div className="flex gap-2 mb-4">
+      <div className="flex-1 flex items-center gap-2 bg-white dark:bg-slate-800 rounded-xl border border-rose-200 dark:border-slate-600 px-3 py-2">
         <Search size={14} className="text-gray-400 dark:text-slate-500 flex-shrink-0" />
         <input
           className="flex-1 text-sm outline-none placeholder-gray-400 dark:placeholder-slate-500 bg-transparent text-gray-800 dark:text-slate-100"
@@ -125,9 +135,18 @@ export default function BuildingsPage() {
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
+      <select
+        className="rounded-xl border border-rose-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-2 text-xs text-gray-800 dark:text-slate-100 outline-none focus:border-pink-400"
+        value={sortBy}
+        onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest')}
+      >
+        <option value="newest">Neueste zuerst</option>
+        <option value="oldest">Älteste zuerst</option>
+      </select>
+      </div>
 
       {/* Building grid */}
-      {filtered.length === 0 ? (
+      {sorted.length === 0 ? (
         <EmptyState
           icon={<span>🏗️</span>}
           title="Keine Gebäude gefunden"
@@ -141,7 +160,7 @@ export default function BuildingsPage() {
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {filtered.map((building) => (
+          {sorted.map((building) => (
             <BuildingCard
               key={building.id}
               building={building}

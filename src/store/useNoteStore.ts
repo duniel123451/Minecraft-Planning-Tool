@@ -10,7 +10,7 @@ interface NoteStore {
   lastDeleted: NoteNode | null
 
   initializeIfNeeded: () => void
-  addNote:    (note: Omit<NoteNode, 'id' | 'createdAt' | 'updatedAt'>) => void
+  addNote:    (note: Omit<NoteNode, 'id' | 'type' | 'createdAt' | 'updatedAt'>) => void
   updateNote: (id: string, updates: Partial<NoteNode>) => void
   deleteNote: (id: string) => void
   undoDelete: () => void
@@ -41,6 +41,7 @@ export const useNoteStore = create<NoteStore>()(
         const note: NoteNode = {
           ...data,
           id:        crypto.randomUUID(),
+          type:      'note',
           createdAt: now,
           updatedAt: now,
         }
@@ -81,6 +82,12 @@ export const useNoteStore = create<NoteStore>()(
         notes:        s.notes,
         _dataVersion: s._dataVersion,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return
+        state.notes = state.notes.map(n =>
+          n.type ? n : { ...n, type: 'note' as const }
+        )
+      },
     }
   )
 )

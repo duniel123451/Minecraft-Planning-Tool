@@ -33,6 +33,7 @@ export default function NotesPage() {
   const [showUndo, setShowUndo]       = useState(false)
   const [search, setSearch]           = useState('')
   const [tagFilter, setTagFilter]     = useState<string | null>(null)
+  const [sortBy, setSortBy]           = useState<'newest' | 'oldest' | 'updated'>('newest')
 
   const allTags = useMemo(() => {
     const tags = new Set<string>()
@@ -55,10 +56,13 @@ export default function NotesPage() {
     })
   }, [notes, search, tagFilter])
 
-  const sorted = useMemo(
-    () => [...filtered].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-    [filtered],
-  )
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'newest') return b.createdAt.localeCompare(a.createdAt)
+      if (sortBy === 'oldest') return a.createdAt.localeCompare(b.createdAt)
+      return b.updatedAt.localeCompare(a.updatedAt)
+    })
+  }, [filtered, sortBy])
 
   const handleEdit = (note: NoteNode) => {
     setEditTarget(note)
@@ -70,7 +74,7 @@ export default function NotesPage() {
     setEditTarget(null)
   }
 
-  const handleSubmit = (data: Omit<NoteNode, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleSubmit = (data: Omit<NoteNode, 'id' | 'type' | 'createdAt' | 'updatedAt'>) => {
     if (editTarget) {
       updateNote(editTarget.id, data)
     } else {
@@ -104,8 +108,9 @@ export default function NotesPage() {
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center gap-2 bg-white dark:bg-slate-800 rounded-xl border border-rose-200 dark:border-slate-600 px-3 py-2 mb-3">
+      {/* Search + sort */}
+      <div className="flex gap-2 mb-3">
+      <div className="flex-1 flex items-center gap-2 bg-white dark:bg-slate-800 rounded-xl border border-rose-200 dark:border-slate-600 px-3 py-2">
         <Search size={14} className="text-gray-400 dark:text-slate-500 flex-shrink-0" />
         <input
           className="flex-1 text-sm outline-none placeholder-gray-400 dark:placeholder-slate-500 bg-transparent text-gray-800 dark:text-slate-100"
@@ -118,6 +123,16 @@ export default function NotesPage() {
             <X size={13} />
           </button>
         )}
+      </div>
+      <select
+        className="rounded-xl border border-rose-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-2 text-xs text-gray-800 dark:text-slate-100 outline-none focus:border-pink-400 self-stretch"
+        value={sortBy}
+        onChange={e => setSortBy(e.target.value as 'newest' | 'oldest' | 'updated')}
+      >
+        <option value="newest">Neueste zuerst</option>
+        <option value="oldest">Älteste zuerst</option>
+        <option value="updated">Zuletzt bearbeitet</option>
+      </select>
       </div>
 
       {/* Tag filter */}
