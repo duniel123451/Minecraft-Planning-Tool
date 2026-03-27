@@ -88,7 +88,8 @@ export function ImageLightbox({
     if (!isDragging.current || !scrollRef.current) return
     const dx = e.clientX - dragOrigin.current.x
     const dy = e.clientY - dragOrigin.current.y
-    dragMoved.current      += Math.abs(dx) + Math.abs(dy)
+    // Track max displacement from start (not accumulated sum)
+    dragMoved.current        = Math.sqrt(dx * dx + dy * dy)
     scrollRef.current.scrollLeft = dragOrigin.current.sl - dx
     scrollRef.current.scrollTop  = dragOrigin.current.st - dy
   }
