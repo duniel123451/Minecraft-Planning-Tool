@@ -62,87 +62,6 @@ function isValidBackup(value: unknown): value is BackupData {
   )
 }
 
-// ─── Language selector ────────────────────────────────────────────────────────
-
-function LanguageSelect() {
-  const { t, locale } = useI18n()
-  const setLocale     = useSettingsStore(s => s.setLocale)
-  const [open, setOpen]           = useState(false)
-  const [search, setSearch]       = useState('')
-
-  const localeEntries = useMemo(
-    () =>
-      (Object.entries(SUPPORTED_LOCALES) as [Locale, { nativeName: string }][])
-        .sort(([, a], [, b]) => a.nativeName.localeCompare(b.nativeName)),
-    [],
-  )
-
-  const filtered = useMemo(
-    () =>
-      localeEntries.filter(([, { nativeName }]) =>
-        nativeName.toLowerCase().includes(search.toLowerCase()),
-      ),
-    [localeEntries, search],
-  )
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => { setOpen(o => !o); setSearch('') }}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-xl border border-rose-100 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-pink-300 min-w-[140px] justify-between"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-      >
-        <span>{SUPPORTED_LOCALES[locale].nativeName}</span>
-        <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-20 mt-1 w-52 rounded-xl border border-rose-100 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg overflow-hidden">
-            {/* Search */}
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-rose-50 dark:border-slate-700">
-              <Search size={13} className="text-gray-400 flex-shrink-0" />
-              <input
-                autoFocus
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder={t('settings.appearance.languageSearchPlaceholder')}
-                className="flex-1 text-xs bg-transparent outline-none text-gray-700 dark:text-slate-200 placeholder:text-gray-400"
-              />
-            </div>
-
-            {/* Options */}
-            <ul role="listbox" className="max-h-48 overflow-y-auto py-1">
-              {filtered.length === 0 && (
-                <li className="px-3 py-2 text-xs text-gray-400 dark:text-slate-500">—</li>
-              )}
-              {filtered.map(([code, { nativeName }]) => (
-                <li key={code} role="option" aria-selected={code === locale}>
-                  <button
-                    type="button"
-                    onClick={() => { setLocale(code); setOpen(false) }}
-                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-sm text-left transition-colors
-                      ${code === locale
-                        ? 'bg-pink-50 dark:bg-pink-950 text-pink-600 dark:text-pink-400'
-                        : 'text-gray-700 dark:text-slate-200 hover:bg-rose-50 dark:hover:bg-slate-700'
-                      }`}
-                  >
-                    <span>{nativeName}</span>
-                    {code === locale && <Check size={13} />}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
@@ -155,8 +74,23 @@ export default function SettingsPage() {
 
   const fileInputRef                     = useRef<HTMLInputElement>(null)
   const { dark, toggle: toggleDark }     = useDarkMode()
-  const { playerName, setPlayerName }    = useSettingsStore()
+  const { playerName, setPlayerName, locale, setLocale } = useSettingsStore()
   const [nameInput, setNameInput]        = useState(playerName)
+  const [langOpen,  setLangOpen]         = useState(false)
+  const [langSearch, setLangSearch]      = useState('')
+
+  const localeEntries = useMemo(
+    () =>
+      (Object.entries(SUPPORTED_LOCALES) as [Locale, { nativeName: string }][])
+        .sort(([, a], [, b]) => a.nativeName.localeCompare(b.nativeName)),
+    [],
+  )
+  const filteredLocales = useMemo(
+    () => localeEntries.filter(([, { nativeName }]) =>
+      nativeName.toLowerCase().includes(langSearch.toLowerCase()),
+    ),
+    [localeEntries, langSearch],
+  )
 
   const TABS: { id: Tab; emoji: string }[] = [
     { id: 'appearance',   emoji: '🎨' },
@@ -394,13 +328,63 @@ export default function SettingsPage() {
 
             <div className="border-t border-rose-50 dark:border-slate-700" />
 
-            {/* Language */}
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-slate-200">{t('settings.appearance.language')}</p>
-                <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{t('settings.appearance.languageDesc')}</p>
-              </div>
-              <LanguageSelect />
+            {/* Language — inline expansion, no popup */}
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => { setLangOpen(o => !o); setLangSearch('') }}
+                className="flex items-center justify-between gap-4 text-left w-full"
+              >
+                <div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-slate-200">{t('settings.appearance.language')}</p>
+                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
+                    {SUPPORTED_LOCALES[locale].nativeName}
+                  </p>
+                </div>
+                <ChevronDown
+                  size={16}
+                  className={`flex-shrink-0 text-gray-400 transition-transform duration-200 ${langOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              {langOpen && (
+                <div className="rounded-xl border border-rose-100 dark:border-slate-600 overflow-hidden">
+                  {/* Search */}
+                  <div className="flex items-center gap-2 px-3 py-2 border-b border-rose-50 dark:border-slate-700 bg-rose-50/50 dark:bg-slate-700/50">
+                    <Search size={13} className="text-gray-400 flex-shrink-0" />
+                    <input
+                      autoFocus
+                      type="text"
+                      value={langSearch}
+                      onChange={e => setLangSearch(e.target.value)}
+                      placeholder={t('settings.appearance.languageSearchPlaceholder')}
+                      className="flex-1 text-xs bg-transparent outline-none text-gray-700 dark:text-slate-200 placeholder:text-gray-400"
+                    />
+                  </div>
+                  {/* Options */}
+                  <ul role="listbox">
+                    {filteredLocales.length === 0 && (
+                      <li className="px-3 py-2 text-xs text-gray-400 dark:text-slate-500">—</li>
+                    )}
+                    {filteredLocales.map(([code, { nativeName }]) => (
+                      <li key={code} role="option" aria-selected={code === locale}>
+                        <button
+                          type="button"
+                          onClick={() => { setLocale(code); setLangOpen(false) }}
+                          className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-sm transition-colors
+                            ${code === locale
+                              ? 'bg-pink-50 dark:bg-pink-950 text-pink-600 dark:text-pink-400'
+                              : 'text-gray-700 dark:text-slate-200 hover:bg-rose-50 dark:hover:bg-slate-700/60'
+                            }`}
+                        >
+                          <span>{nativeName}</span>
+                          {code === locale && <Check size={13} />}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
           </div>
