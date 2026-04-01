@@ -21,6 +21,7 @@ import { fetchAndHydrate }     from '@/lib/supabase/fetchAndHydrate'
 import { startSync, stopSync, setHydrating } from '@/lib/supabase/syncEngine'
 import { getLocalDataCounts, migrateLocalDataToSupabase, type MigrationCounts } from '@/lib/supabase/migration'
 import { MigrationModal }      from '@/components/ui/MigrationModal'
+import { SyncErrorToast }      from '@/components/ui/SyncErrorToast'
 import { initXpTracking }       from '@/lib/progression/xpTracker'
 import { getLevelFromXp }       from '@/lib/progression/xp'
 
@@ -202,6 +203,7 @@ export function AppShell({ children }: AppShellProps) {
       <AchievementToast />
       <XpToast />
       <LevelUpModal />
+      <SyncErrorToast />
     </div>
   )
 }
