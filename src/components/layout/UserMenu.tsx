@@ -116,7 +116,7 @@ export function ProfileAvatar() {
       {menuOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-          <div className="absolute bottom-12 right-0 z-50 w-56 bg-white dark:bg-slate-800 rounded-xl border border-rose-100 dark:border-slate-700 shadow-lg py-2">
+          <div className="absolute bottom-12 left-0 z-50 w-56 bg-white dark:bg-slate-800 rounded-xl border border-rose-100 dark:border-slate-700 shadow-lg py-2">
             {/* User info */}
             <div className="px-3 py-2 border-b border-rose-50 dark:border-slate-700">
               <p className="text-xs font-medium text-gray-700 dark:text-slate-300 truncate">{displayName}</p>

@@ -114,11 +114,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         {/* Footer */}
         <div className="px-5 py-4 border-t border-rose-50 dark:border-slate-700 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <div className="rounded-xl bg-rose-50 dark:bg-slate-800 p-3 flex-1 mr-3">
+            <ProfileAvatar />
+            <div className="rounded-xl bg-rose-50 dark:bg-slate-800 p-3 flex-1 ml-3">
               <p className="text-xs font-medium text-rose-500 dark:text-rose-400">🌸 Alina&apos;s Quest Tracker</p>
               <p className="text-xs text-rose-400 dark:text-slate-500 mt-0.5">Viel Spaß beim spielen!</p>
             </div>
-            <ProfileAvatar />
           </div>
           {isAuthenticated && <SyncIndicator />}
         </div>
